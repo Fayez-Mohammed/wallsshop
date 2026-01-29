@@ -9,5 +9,6 @@ public class User : IdentityUser
     public string Name { get; set; } 
     
     
-    public virtual Wishlist Wishlist { get; set; }
+    public virtual List<Wishlist> Wishlist { get; set; }
+ //   public virtual List<Wishlist> WishlistItems { get; set; }
 }

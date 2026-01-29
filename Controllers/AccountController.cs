@@ -68,7 +68,7 @@ public class AccountController : ControllerBase
         return Ok(new {response = "Registration successful. Please check your email to verify your account."});
     }
     
-    [HttpGet("confirm-email")]
+    [HttpPost("confirm-email")]
     public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailDto model)
     {
         if (string.IsNullOrWhiteSpace(model.Token) || string.IsNullOrWhiteSpace(model.Email))

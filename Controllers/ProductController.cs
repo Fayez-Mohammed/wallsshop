@@ -39,7 +39,7 @@ public class ProductController(ProductRepository products , IWebHostEnvironment 
      
      [HttpGet("related-product")]
      public async Task<IActionResult> GetRelatedProducts
-          ([FromBody] QueryParameters queryParameters , [FromQuery] int id )
+          ([FromQuery] QueryParameters queryParameters , [FromQuery] int id )
      {
           if (queryParameters.LanguageCode == "ar" || string.IsNullOrEmpty(queryParameters.LanguageCode))
           {
@@ -59,7 +59,7 @@ public class ProductController(ProductRepository products , IWebHostEnvironment 
      
      [HttpGet("top-recent-product")]
      public async Task<IActionResult> GetTopRecentProducts
-          ([FromBody] QueryParameters queryParameters)
+          ([FromQuery] QueryParameters queryParameters)
      {
           if (queryParameters.LanguageCode == "ar" || string.IsNullOrEmpty(queryParameters.LanguageCode))
           {
@@ -75,7 +75,7 @@ public class ProductController(ProductRepository products , IWebHostEnvironment 
 
      [HttpGet("top-rated-product")]
      public async Task<IActionResult> GetTopRatedProducts
-          ([FromBody] QueryParameters queryParameters)
+          ([FromQuery] QueryParameters queryParameters)
      {
           if (queryParameters.LanguageCode == "ar" || string.IsNullOrEmpty(queryParameters.LanguageCode))
           {

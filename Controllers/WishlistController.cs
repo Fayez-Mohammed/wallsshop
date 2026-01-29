@@ -19,7 +19,7 @@ public class WishlistController(WishlistRepository repo , ProductRepository prod
     }
     [AllowAnonymous]
     [HttpGet("get")]
-    public async Task<IActionResult> Get([FromBody] WhishlistDto wishlistDto)
+    public async Task<IActionResult> Get([FromQuery] WhishlistDto wishlistDto)
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
