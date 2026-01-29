@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="73a3d0aa-8339-48ed-b9f4-6c9be8cb433e" name="site52159.siteasp.net" url="https://webftp.monsterasp.net">
+        <fileTransfer rootFolder="/wwwroot" host="site52159.siteasp.net" port="21">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

@@ -5,7 +5,7 @@ using WallsShop.Entity;
 namespace WallsShop.Repository;
 
 public class FormRepository(WallShopContext ctx)
-{
+{ 
     public async Task<bool> CreateForm(FormDto form)
     {
         var formData = new Form

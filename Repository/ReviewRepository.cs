@@ -11,7 +11,7 @@ namespace WallsShop.Repository;
 public class ReviewRepository(WallShopContext ctx)
 {
     [Authorize]
-    public async  Task<bool> CreateReview(ReviewDto review , ClaimsPrincipal User ,  UserManager<User> _userManager)
+    public async  Task<bool> CreateReview(ReviewDto review , ClaimsPrincipal  User,  UserManager<User> _userManager)
     {
         var user = await _userManager.GetUserAsync(User);
         
@@ -75,7 +75,11 @@ public class ReviewRepository(WallShopContext ctx)
             return false;
         }
     }
+    // 3.2 out of 132 person 
     
+    // fayez : 
+    
+    // adham : 
     public async Task<ReviewResponseDto> GetProductReviews(int productId , string userId , bool isAdmin  )
     {
         return await  ctx

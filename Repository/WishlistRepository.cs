@@ -9,12 +9,14 @@ public class WishlistRepository(WallShopContext ctx )
 {
     public async Task<List<ProductOverviewDto>> GetWishlist(string userId)
     {
-        var ids = await ctx.Wishlists
+        var ids = await ctx
+            .Wishlists
             .Where(w => w.UserId == userId)
             .Select(a=>a.ProductId)
             .ToListAsync();
         
-        var products = await ctx.Products
+        var products = await ctx
+            .Products
             .Where(p => ids.Contains(p.Id))
             .Select(p => new ProductOverviewDto
             {
@@ -59,7 +61,9 @@ public class WishlistRepository(WallShopContext ctx )
     
     public async Task<List<ProductOverviewDto>> GetProducts(WhishlistDto wishlistDto)
     {
-        var products = await ctx.Products
+        // product id 
+        var products = await ctx
+            .Products
             .Where(p => wishlistDto.ProductIds.Contains(p.Id))
             .Select(p => new ProductOverviewDto
             {

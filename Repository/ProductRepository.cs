@@ -229,7 +229,8 @@ public class ProductRepository(WallShopContext ctx)
         };
 
         
-        var productOverviews =  query.Select(p => new ProductTranslationOverviewDto
+        var productOverviews =  query.Select(p => 
+            new ProductTranslationOverviewDto
         {
             Id = p.Id,
             Name = p.Name,
@@ -380,7 +381,7 @@ public class ProductRepository(WallShopContext ctx)
     {
         ctx.SaveChanges();
     }
-
+    // ends here 
     public bool UpdateProduct(Product product)
     {
         try

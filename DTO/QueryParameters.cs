@@ -12,5 +12,5 @@ public class QueryParameters
     
     public string LanguageCode { get; set; } 
     
-    public List<int> Ids { get; set; } = new List<int>();
+    public List<int> Ids { get; set; } = new List<int>(); // whishlist 
 }
