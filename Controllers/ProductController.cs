@@ -9,7 +9,7 @@ public class ProductController(ProductRepository products , IWebHostEnvironment 
 {    
      [HttpGet("product")]
      public async Task<IActionResult> GetProductById
-          ([FromBody] QueryParameters queryParameters)
+          ([FromQuery] QueryParameters queryParameters)
      {
           if (queryParameters.LanguageCode == "ar" || string.IsNullOrEmpty(queryParameters.LanguageCode))
           {
@@ -24,7 +24,7 @@ public class ProductController(ProductRepository products , IWebHostEnvironment 
      
      [HttpGet("products")]
      public async Task<IActionResult> GetProducts
-          ([FromBody] QueryParameters queryParameters)
+          ([FromQuery] QueryParameters queryParameters)
      {
           if (queryParameters.LanguageCode == "ar" || string.IsNullOrEmpty(queryParameters.LanguageCode))
           {
