@@ -13,9 +13,9 @@ public class LoginDto
     [Required]
     public string Password { get; set; }
     
-    public WhishlistDto Wishlist { get; set; }
+    public WhishlistDto? Wishlist { get; set; }
     
-    public ShoppingCart Item { get; set; }
+    public ShoppingCart? Item { get; set; }
 }
 
  
