@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using WallsShop.Context;
 using WallsShop.DTO;
@@ -74,44 +75,126 @@ public class CartService
         }
     }
 
-    public List<CartItem> GetCartItems(string userId)
+    //public List<CartItem> GetCartItems(string userId)
+    //{
+    //    if (_carts.TryGetValue(userId, out var cached))
+    //    {
+    //        return cached.Cart.Items;
+    //    }
+
+    //    return new List<CartItem>();
+    //}
+    public async Task<List<CartItem>> GetCartItems(string userId, string languageCode="ar")
     {
         if (_carts.TryGetValue(userId, out var cached))
         {
-            return cached.Cart.Items;
+
+         var items = await GetProductImageName(cached.Cart.Items, languageCode);
+            return items;
         }
 
         return new List<CartItem>();
     }
-
-    public async Task<List<CartItem>> GetProductImageName( List<CartItem> items)
+    public async Task<List<CartItem>> GetProductImageName( List<CartItem> items, string languageCode)
     {
         List<CartItem> returnList = new List<CartItem>();
         using (var scope = _serviceProvider.CreateScope())
         {
             
             var context = scope.ServiceProvider.GetRequiredService<WallShopContext>();
-           
-            foreach (var item in items)
+            if (languageCode.ToLower() == "ar")
             {
-                var product =   context
-                    .Products
-                    .Include(a => a.Images)
-                    .Include(a => a.Variants)
-                    .Where(a=>a.Id == item.ProductId)
-                    .Select(a => new CartItem()
+                foreach (var item in items)
+                {
+                    var product = context
+                        .Products
+                        .Include(a => a.Images)
+                        .Include(a => a.Variants)
+                        .Where(a => a.Id == item.ProductId)
+                        .Select(a => new CartItem()
+                        {
+                            ProductId = item.ProductId,
+                            ProductName = a.Name,
+                            VariantId = item.VariantId,
+                            Quantity = item.Quantity,
+                            Color = item.Color,
+                            Size = a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Size ?? "",
+                            Type = a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Type ?? "",
+                            UnitPrice = a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Price > 0 ?
+                                a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Price : a.Price,
+                            ImageUrl = a.Images.FirstOrDefault().RelativePath ?? string.Empty,
+                        }).FirstOrDefault();
+                    if (product == null) throw new Exception("Product does not exist");
+                    returnList.Add(product);
+                }
+
+            }
+            else if (languageCode == "en")
+            {
+                foreach (var item in items)
+                {
+                    var product = context.ProductTranslations.Include(t => t.Product).ThenInclude(p => p.Variants)
+
+                        .Where(t => t.ProductId == item.ProductId)
+                        .Select(t => new CartItem()
+                        {
+                            ProductId = item.ProductId,
+
+                            ProductName = t.Name,
+
+                            VariantId = item.VariantId,
+
+                            Size = t.Product.Variants
+                                    .Where(v => v.Id == item.VariantId)
+                                    .Select(v => v.Size)
+                                    .FirstOrDefault() ?? "",
+
+                            Type = t.Product.Variants
+                                    .Where(v => v.Id == item.VariantId)
+                                    .Select(v => v.Type)
+                                    .FirstOrDefault() ?? "",
+
+                            Color = item.Color,
+                            Quantity = item.Quantity,
+
+                            UnitPrice = t.Product.Variants
+                                        .Where(v => v.Id == item.VariantId)
+                                        .Select(v => v.Price > 0 ? v.Price : t.Product.Price)
+                                        .FirstOrDefault(),
+
+                            
+                            ImageUrl = t.Product.Images.FirstOrDefault().RelativePath ?? string.Empty,
+                        })
+                        .FirstOrDefault();
+
+                    if (product == null)
                     {
-                        ProductId = item.ProductId,
-                        ProductName = a.Name,
-                        VariantId = item.VariantId,
-                        Size = a.Variants.Where(b=>b.Id == item.VariantId).FirstOrDefault().Size ?? "",
-                        Type = a.Variants.Where(b=>b.Id == item.VariantId).FirstOrDefault().Type ?? "",
-                        UnitPrice = a.Variants.Where(b=>b.Id == item.VariantId).FirstOrDefault().Price > 0 ?
-                            a.Variants.Where(b=>b.Id == item.VariantId).FirstOrDefault().Price : a.Price,
-                        ImageUrl = a.Images.FirstOrDefault().RelativePath ?? string.Empty,
-                    }).FirstOrDefault();
-                if (product == null) throw new Exception("Product does not exist");
-                returnList.Add(product);
+                        var productar = context
+                      .Products
+                      .Include(a => a.Images)
+                      .Include(a => a.Variants)
+                      .Where(a => a.Id == item.ProductId)
+                      .Select(a => new CartItem()
+                      {
+                          ProductId = item.ProductId,
+                          ProductName = a.Name,
+                          VariantId = item.VariantId,
+                          Quantity = item.Quantity,
+                          Color = item.Color,
+                          Size = a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Size ?? "",
+                          Type = a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Type ?? "",
+                          UnitPrice = a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Price > 0 ?
+                              a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Price : a.Price,
+                          ImageUrl = a.Images.FirstOrDefault().RelativePath ?? string.Empty,
+                      }).FirstOrDefault();
+                        if (productar == null) throw new Exception("Product does not exist");
+                        returnList.Add(productar);
+                    }
+                    else
+                    {
+                        returnList.Add(product);
+                    }
+                }
             }
         }
 
@@ -128,5 +211,11 @@ public class CartService
         {
             _carts.TryRemove(key, out _);
         }
+    }
+    // ضيف الدالة دي جوه CartService.cs
+    public void ClearCart(string userId)
+    {
+        // TryRemove بتحذف العنصر من الـ Dictionary بأمان
+        _carts.TryRemove(userId, out _);
     }
 }

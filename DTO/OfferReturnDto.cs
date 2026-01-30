@@ -6,4 +6,7 @@ public class OfferReturnDto
     public string Name { get; set; }
     public string Description { get; set; }
     public string CategoryValue { get; set; }
+    public string? ImageUrl { get; set; } 
+
+    public DateOnly EndDate { get; set; }
 }

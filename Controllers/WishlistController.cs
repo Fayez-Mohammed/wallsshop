@@ -19,13 +19,14 @@ public class WishlistController(WishlistRepository repo , ProductRepository prod
     }
     [AllowAnonymous]
     [HttpGet("get")]
-    public async Task<IActionResult> Get([FromQuery] WhishlistDto wishlistDto)
+    public async Task<IActionResult> Get([FromQuery] WhishlistDto wishlistDto, [FromQuery] string LanguageCode="en")
     {
+
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
         if (User.Identity.IsAuthenticated)
         {
-            var response = await repo.GetWishlist(userId!);
+            var response = await repo.GetWishlist(userId!,LanguageCode);
             return Ok(new { response });
         }
         var products = await repo.GetProducts(wishlistDto);

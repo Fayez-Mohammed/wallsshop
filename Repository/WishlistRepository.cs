@@ -7,29 +7,45 @@ namespace WallsShop.Repository;
 
 public class WishlistRepository(WallShopContext ctx )
 {
-    public async Task<List<ProductOverviewDto>> GetWishlist(string userId)
+    public async Task<List<ProductOverviewDto>> GetWishlist(string userId, string LanguageCode)
     {
         var ids = await ctx
             .Wishlists
             .Where(w => w.UserId == userId)
-            .Select(a=>a.ProductId)
+            .Select(a => a.ProductId)
             .ToListAsync();
-        
-        var products = await ctx
-            .Products
-            .Where(p => ids.Contains(p.Id))
-            .Select(p => new ProductOverviewDto
-            {
-                Id = p.Id,
-                Name = p.Name,
-                Price = p.Price,
-                PriceAfterDiscount = p.PriceAfterDiscount,
-                ImageUrl = p.Images.Select(i => i.RelativePath).FirstOrDefault() ?? "No image",
-                IsInWishList = true
-            })
-            .ToListAsync();
+        if (LanguageCode == "ar") { 
+            var products = await ctx
+                .Products
+                .Where(p => ids.Contains(p.Id))
+                .Select(p => new ProductOverviewDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Price = p.Price,
+                    PriceAfterDiscount = p.PriceAfterDiscount,
+                    ImageUrl = p.Images.Select(i => i.RelativePath).FirstOrDefault() ?? "No image",
+                    IsInWishList = true
+                })
+                .ToListAsync();
 
-        return products;
+        return products; }
+        else
+        {
+            var products = await ctx.ProductTranslations
+                .Where(pt => ids.Contains(pt.ProductId))
+                .Select(pt => new ProductOverviewDto
+                {
+                    Id = pt.ProductId,
+                    Name = pt.Name,
+                    Price = pt.Product.Price,
+                    PriceAfterDiscount = pt.Product.PriceAfterDiscount,
+                    ImageUrl = pt.Product.Images.Select(i => i.RelativePath).FirstOrDefault() ?? "No image",
+                    IsInWishList = true
+                })
+                .ToListAsync();
+            return products;
+        }
     }
     public async Task AddToWishlist(WhishlistDto wishlist, string userId)
     {

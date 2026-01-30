@@ -25,19 +25,19 @@ public class CartController : ControllerBase
     }
 
     [HttpGet("get-cart")]
-    public async Task<IActionResult> GetCartItems( [FromBody] GetCartDto getCartDto)
+    public async Task<IActionResult> GetCartItems( [FromQuery] GetCartDto getCartDto, [FromQuery] string languageCode = "ar")
     {
         var authenticatedUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         
         if (string.IsNullOrEmpty(authenticatedUserId))
         {
-            return Ok(new {cart =  await _cartService.GetProductImageName(getCartDto.ShoppingCart.Items)});
+            return Ok(new {cart =  await _cartService.GetProductImageName(getCartDto.ShoppingCart.Items, languageCode)});
         }
         else
         {
             var items = new ShoppingCart()
             {
-                Items = _cartService.GetCartItems(authenticatedUserId),
+                Items = await _cartService.GetCartItems(authenticatedUserId, languageCode),
                 UserId = getCartDto.UserId
             };
             return Ok(new {cart =items});
