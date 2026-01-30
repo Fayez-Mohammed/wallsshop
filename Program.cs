@@ -102,19 +102,25 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // --- 2. Middleware Pipeline ---
-
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseDeveloperExceptionPage();
-
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "WallsShop API v1");
+    options.RoutePrefix = string.Empty;
 }
-else
-{
+);
+//if (app.Environment.IsDevelopment())
+//{
+//    app.UseDeveloperExceptionPage();
+
+    //    app.UseSwagger();
+    //    app.UseSwaggerUI();
+    //}
+//else
+//{
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
-}
+//}
 
 app.UseCors("AllowAll");
 

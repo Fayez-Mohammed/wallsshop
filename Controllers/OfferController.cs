@@ -9,7 +9,7 @@ namespace WallsShop.Controllers;
 public class OfferController(OfferRepository repo) : ControllerBase 
 {
    [HttpPost("add-offer")]
-   public async Task<IActionResult> AddOffer([FromBody] AddOfferDto model)
+   public async Task<IActionResult> AddOffer([FromForm] AddOfferDto model)
    {
       var result = await repo.AddOffer( model);
        if (result)

@@ -10,11 +10,12 @@ namespace WallsShop.Repository;
 
 public class ProductRepository(WallShopContext ctx)
 {
-    public async Task<List<ProductResponseDto>> GetArabicProductById(QueryParameters queryParameters)
+    public async Task<List<ProductResponseDto>> GetArabicProductById(QueryParameters queryParameters, string? userId = null)
     {
-        var query = ctx.Products.AsQueryable(); 
- 
-      
+        var query = ctx.Products.AsQueryable();
+        //////////////
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+        /////////////////////
         if (!string.IsNullOrEmpty(queryParameters.category))
         {
             var cat = queryParameters.category.ToLower();
@@ -26,8 +27,8 @@ public class ProductRepository(WallShopContext ctx)
             query = query.Where(a => a.Id == queryParameters.id);
         }
 
-      
-        query = queryParameters.order.ToLower() switch
+
+        query = (queryParameters.order ?? "").ToLower() switch
         {
             "price_asc" => query.OrderBy(a => a.Price),
             "price_desc" => query.OrderByDescending(a => a.Price),
@@ -57,7 +58,7 @@ public class ProductRepository(WallShopContext ctx)
             Category = p.Category.Replace("-"," "),
             CateogryValue = p.CategoryValue,
             SKU = p.SKU,
-            IsInWishList = queryParameters.Ids.Any(id => id == p.Id) ? true : false,
+            IsInWishList = wishlistIds.Contains(p.Id),
             Images = p.Images.Select(img => new ProductImageDto
             {
                 Path = img.RelativePath
@@ -75,8 +76,8 @@ public class ProductRepository(WallShopContext ctx)
             }).ToList()
         }).ToListAsync();
     }
-    
-    public async Task<List<ProductTranslationDto>> GetEnglishProductById(QueryParameters queryParameters )
+
+    public async Task<List<ProductTranslationDto>> GetEnglishProductById(QueryParameters queryParameters, string? userId = null)
     {
  
         var query = ctx
@@ -86,6 +87,7 @@ public class ProductRepository(WallShopContext ctx)
             .Include(t => t.Product)
             .ThenInclude(t=>t.Images)
             .AsQueryable();
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
 
         if (queryParameters.id > 0)
         {
@@ -130,8 +132,8 @@ public class ProductRepository(WallShopContext ctx)
                 Price = pt.Product.Price,
                 PriceAfterDiscount = pt.Product.PriceAfterDiscount,
                 SKU = pt.Product.SKU,
-                IsInWishList = queryParameters.Ids.Any(id => id == pt.Id) ? true : false,
-                Images = pt.Product.Images.Select(img => new ProductImageDto()
+            IsInWishList = wishlistIds.Contains(pt.Id),
+            Images = pt.Product.Images.Select(img => new ProductImageDto()
                 {
                     Path = img.RelativePath
                 }).ToList(),
@@ -140,7 +142,7 @@ public class ProductRepository(WallShopContext ctx)
             .ToListAsync<ProductTranslationDto>();;
     }
 
-    public async Task<List<ProductOverviewDto>> GetProductsOverview(QueryParameters queryParameters)
+    public async Task<List<ProductOverviewDto>> GetProductsOverview(QueryParameters queryParameters, string? userId = null)
     {
         queryParameters.page = queryParameters.page > 0 ? queryParameters.page   :  1;
         queryParameters.pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
@@ -151,7 +153,8 @@ public class ProductRepository(WallShopContext ctx)
             .Include(t=>t.Images)
             .AsQueryable();
 
-         
+
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
 
         if (!string.IsNullOrEmpty(queryParameters.category))
         {
@@ -185,19 +188,19 @@ public class ProductRepository(WallShopContext ctx)
             ImageUrl = p.Images.FirstOrDefault().RelativePath,
             TotalRatingPeople = p.TotalRatePeople,
             AverageRatingPeople = p.AverageRate,
-            IsInWishList = queryParameters.Ids.Any(id => id == p.Id) ? true : false
+            IsInWishList = wishlistIds.Contains(p.Id),
         }).ToList();
 
         return productOverviews;
     }
     
     
-    public async Task<List<ProductTranslationOverviewDto>> GetProductsTranslationOverview(QueryParameters queryParameters)
+    public async Task<List<ProductTranslationOverviewDto>> GetProductsTranslationOverview(QueryParameters queryParameters, string? userId = null)
     {
         queryParameters.page = queryParameters.page > 0 ? queryParameters.page   :  1;
         queryParameters.pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
          
-        
+         
         var query = ctx
             .ProductTranslations
             .Include(t => t.Product)            
@@ -206,6 +209,7 @@ public class ProductRepository(WallShopContext ctx)
             .ThenInclude(t=>t.Images)
             .AsQueryable();
 
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
 
         if (!string.IsNullOrEmpty(queryParameters.category))
         {
@@ -239,14 +243,16 @@ public class ProductRepository(WallShopContext ctx)
             ImageUrl = p.Product.Images.FirstOrDefault().RelativePath,
             TotalPeopleRating = p.Product.TotalRatePeople,
             AverageRatingPeople = p.Product.AverageRate,
-            IsInWishList = queryParameters.Ids.Any(id => id == p.Id) ? true : false
-        }).ToList();
+             IsInWishList = wishlistIds.Contains(p.Id)
+            }).ToList();
 
         return productOverviews;
     }
-  
-    public async Task<List<ProductOverviewDto>> GetTop4RatedProducts(QueryParameters query)
+
+    public async Task<List<ProductOverviewDto>> GetTop4RatedProducts(QueryParameters queryParameters, string? userId = null)
     {
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+
         return await ctx?.Products
             .OrderByDescending(a => a.AverageRate)
             .Include(a=>a.Variants)
@@ -261,13 +267,15 @@ public class ProductRepository(WallShopContext ctx)
                 ImageUrl = p.Images.FirstOrDefault().RelativePath,
                 TotalRatingPeople = p.TotalRatePeople,
                 AverageRatingPeople = p.AverageRate,
-                IsInWishList = query.Ids.Any(id => id == p.Id) ? true : false
+                IsInWishList = wishlistIds.Contains(p.Id)
             }).ToListAsync();
              
     }
 
-    public async Task<List<ProductOverviewDto>> GetTop4RecentProducts(QueryParameters query)
+    public async Task<List<ProductOverviewDto>> GetTop4RecentProducts(QueryParameters query, string? userId = null)
     {
+        var wishlistIds = await GetWishlistIdsAsync(userId, query.Ids);
+
         return await ctx?.Products
             .OrderByDescending(a => a.Created)
             .Include(a => a.Variants)
@@ -283,12 +291,14 @@ public class ProductRepository(WallShopContext ctx)
                 ImageUrl = p.Images.FirstOrDefault().RelativePath,
                 TotalRatingPeople = p.TotalRatePeople,
                 AverageRatingPeople = p.AverageRate,
-                IsInWishList = query.Ids.Any(id => id == p.Id) ? true : false
+                  IsInWishList = wishlistIds.Contains(p.Id)
             }).ToListAsync();
     }
-    
-    public async Task<List<ProductTranslationOverviewDto>> GetTop4RecentProductTranslations(QueryParameters query)
+
+    public async Task<List<ProductTranslationOverviewDto>> GetTop4RecentProductTranslations(QueryParameters queryParameters, string? userId = null)
     {
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+                    
         return await ctx?
             .ProductTranslations
             .Include(t => t.Product)
@@ -305,13 +315,15 @@ public class ProductRepository(WallShopContext ctx)
                 ImageUrl = pt.Product.Images.FirstOrDefault().RelativePath,
                 TotalPeopleRating = pt.Product.TotalRatePeople,
                 AverageRatingPeople = pt.Product.AverageRate,
-                IsInWishList = query.Ids.Any(id => id == pt.Id) ? true : false
+                 IsInWishList = wishlistIds.Contains(pt.Id)
             })
             .ToListAsync<ProductTranslationOverviewDto>();
     }
-    
-    public async Task<List<ProductTranslationOverviewDto>> GetTop4RatedProductTranslations(QueryParameters query)
+
+    public async Task<List<ProductTranslationOverviewDto>> GetTop4RatedProductTranslations(QueryParameters queryParameters, string? userId = null)
     {
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+
         return await ctx?.ProductTranslations
             .Include(t => t.Product).ThenInclude(p => p.Variants)
             .Include(t => t.Product).ThenInclude(p => p.Images)
@@ -325,7 +337,7 @@ public class ProductRepository(WallShopContext ctx)
                 ImageUrl = pt.Product.Images.FirstOrDefault().RelativePath,
                 TotalPeopleRating = pt.Product.TotalRatePeople,
                 AverageRatingPeople = pt.Product.AverageRate,
-                IsInWishList = query.Ids.Any(id => id == pt.Id) ? true : false
+                 IsInWishList = wishlistIds.Contains(pt.Id)
             })
             .ToListAsync<ProductTranslationOverviewDto>();
     }
@@ -337,9 +349,11 @@ public class ProductRepository(WallShopContext ctx)
             .Distinct()
             .ToList();
     }
-    
-    public async Task<List<ProductOverviewDto>> GetProductsByCategory(QueryParameters queryParameters , int Id)
+
+    public async Task<List<ProductOverviewDto>> GetProductsByCategory(QueryParameters queryParameters , int Id, string? userId = null)
     {
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+
         return await ctx.Products
             .Where(a => a.Category.ToLower() == queryParameters.category.ToLower() && a.Id != Id)
             .Include(a => a.Images)
@@ -353,13 +367,15 @@ public class ProductRepository(WallShopContext ctx)
                 ImageUrl = p.Images.FirstOrDefault().RelativePath,
                 TotalRatingPeople = p.TotalRatePeople,
                 AverageRatingPeople = p.AverageRate,
-                IsInWishList = queryParameters.Ids.Any(id => id == p.Id) ? true : false
+                IsInWishList = wishlistIds.Contains(p.Id)
             }).ToListAsync();
     }
-    
-    
-    public async Task<List<ProductTranslationOverviewDto>> GetProductTranslationsByCategory(QueryParameters queryParameters, int Id)
+
+
+    public async Task<List<ProductTranslationOverviewDto>> GetProductTranslationsByCategory(QueryParameters queryParameters, int Id, string? userId = null)
     {
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+
         return await ctx.ProductTranslations
             .Where(a => a.Category.ToLower() == queryParameters.category.ToLower() && a.Id != Id)
             .Include(a=>a.Product)
@@ -372,7 +388,7 @@ public class ProductRepository(WallShopContext ctx)
                 PriceAfterDiscount = pt.Product.PriceAfterDiscount,
                 TotalPeopleRating = pt.Product.TotalRatePeople,
                 AverageRatingPeople = pt.Product.AverageRate,
-                IsInWishList = queryParameters.Ids.Any(id => id == pt.Id) ? true : false
+                IsInWishList = wishlistIds.Contains(pt.Id)
             })
             .ToListAsync<ProductTranslationOverviewDto>();
     }
@@ -503,6 +519,29 @@ public class ProductRepository(WallShopContext ctx)
         }
 
         return results; 
+    }
+
+
+
+    //////////////////////////
+    ///
+    // دالة مساعدة (Helper Method)
+    private async Task<List<int>> GetWishlistIdsAsync(string? userId, List<int>? frontendIds)
+    {
+        if (!string.IsNullOrEmpty(userId))
+        {
+            return await ctx.Wishlists
+                .Where(w => w.UserId == userId)
+                .Select(w => w.ProductId)
+                .ToListAsync();
+        }
+
+        if (frontendIds != null && frontendIds.Any())
+        {
+            return frontendIds;
+        }
+
+        return new List<int>();
     }
 }
 

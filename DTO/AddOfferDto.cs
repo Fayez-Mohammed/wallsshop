@@ -14,6 +14,11 @@ public class AddOfferDto
     public DateOnly EndDate { get; set; }
     
     public string CateogryValue { get; set; }
+
+
+    public IFormFile? ImageFile { get; set; }
+
+    public string? ImageUrlLink { get; set; }
 }
 
 

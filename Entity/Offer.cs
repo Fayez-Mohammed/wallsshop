@@ -16,4 +16,11 @@ public class Offer
     public DateOnly EndDate { get; set; }
     
     public string CateogryValue { get; set; }
+    ////////////
+    public string? ImageUrl { get; set; }
+
+    public bool IsActive { get; set; } = true;
+
+
+    public bool IsRunning => IsActive && EndDate >= DateOnly.FromDateTime(DateTime.Now);
 }
