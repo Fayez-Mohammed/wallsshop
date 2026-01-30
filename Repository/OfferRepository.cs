@@ -5,7 +5,7 @@ using WallsShop.Entity;
 using Microsoft.AspNetCore.Hosting;
 namespace WallsShop.Repository;
 
-public class OfferRepository(WallShopContext ctx, IWebHostEnvironment env)
+public class OfferRepository(WallShopContext ctx, IWebHostEnvironment env, IConfiguration config)
 {
 
     public async Task<bool> AddOffer(AddOfferDto dto)
@@ -34,8 +34,10 @@ public class OfferRepository(WallShopContext ctx, IWebHostEnvironment env)
             {
                 await dto.ImageFile.CopyToAsync(stream);
             }
+            var baseUrl = config["ImageSettings:BaseUrl"];
 
-            offer.ImageUrl = "images/offers/" + fileName;
+            offer.ImageUrl = $"{baseUrl}/images/offers/{fileName}";
+          //  offer.ImageUrl = "images/offers/" + fileName;
         }
         else if (!string.IsNullOrEmpty(dto.ImageUrlLink))
         {
