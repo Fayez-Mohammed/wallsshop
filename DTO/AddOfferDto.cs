@@ -19,6 +19,7 @@ public class AddOfferDto
     public IFormFile? ImageFile { get; set; }
 
     public string? ImageUrlLink { get; set; }
+  //  public string? languageCode { get; set; } = "en";
 }
 
 
