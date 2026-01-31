@@ -17,11 +17,11 @@ public class ReviewController(ReviewRepository repo,UserManager<User> _userManag
     //[HttpGet("reviews")]
     //public async Task<IActionResult> GetReviews([FromQuery] int productId)
     //{
-    //     var userName = await _userManager.GetUserAsync(User);
-    //        bool isAdmin = User.IsInRole("Admin");
-    //        var reviews = await repo.GetProductReviews(productId, userName?.Name ?? "", isAdmin);
+    //    var userName = await _userManager.GetUserAsync(User);
+    //    bool isAdmin = User.IsInRole("Admin");
+    //    var reviews = await repo.GetProductReviews(productId, userName?.Name ?? "", isAdmin);
 
-    //        return Ok(new { response = reviews });
+    //    return Ok(new { response = reviews });
 
 
     //}
@@ -50,7 +50,7 @@ public class ReviewController(ReviewRepository repo,UserManager<User> _userManag
     {
         var result = await repo.DeleteReview(id);
         if (!result)
-            return BadRequest(new { message = "Could not delete review" });
+            return BadRequest(new { message = "Some thing wrong happend" });
         return Ok(new { message = "Review deleted successfully" });
     }
 }

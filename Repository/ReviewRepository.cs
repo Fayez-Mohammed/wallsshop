@@ -80,23 +80,23 @@ public class ReviewRepository(WallShopContext ctx)
     // fayez : 
 
     // adham : 
-    //public async Task<ReviewResponseDto> GetProductReviews(int productId , string userId , bool isAdmin  )
+    //public async Task<ReviewResponseDto> GetProductReviews(int productId, string userId, bool isAdmin)
     //{
-    //    return await  ctx
+    //    return await ctx
     //        .Products
-    //        .Include(a=>a.Reviews)
-    //        .Where(a=>a.Id == productId)?.
-    //        Select(a=> new ReviewResponseDto()
+    //        .Include(a => a.Reviews)
+    //        .Where(a => a.Id == productId)?.
+    //        Select(a => new ReviewResponseDto()
     //        {
     //            ProductId = a.Id,
     //            AverageRating = a.AverageRate,
     //            TotalReviews = a.TotalRatePeople,
-    //            SingleReviews = a.Reviews.Select(a=>new SingleReviewDto()
+    //            SingleReviews = a.Reviews.Select(a => new SingleReviewDto()
     //            {
     //                UserName = a.UserName,
     //                Comment = a.Comment,
     //                Date = a.ReviewDate,
-    //                CanBeDeleted = userId == a.UserName  || isAdmin ? true:false,
+    //                CanBeDeleted = userId == a.UserName || isAdmin ? true : false,
     //                Rate = a.Rate
     //            }).ToList()
     //        }).FirstOrDefaultAsync();
@@ -114,6 +114,7 @@ public class ReviewRepository(WallShopContext ctx)
                 TotalReviews = a.TotalRatePeople,
                 SingleReviews = a.Reviews.Select(r => new SingleReviewDto()
                 {
+                    Id= r.Id,
                     UserName = r.UserName,
                     Comment = r.Comment,
                     Date = r.ReviewDate,

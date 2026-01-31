@@ -118,7 +118,14 @@ public class ProductRepository(WallShopContext ctx)
             Name = p.Name,
             Price = p.Price,
             PriceAfterDiscount = p.PriceAfterDiscount,
-            Description = p.Descriptions,
+            //   Description = p.Descriptions.Replace("\r\n", "\n"),
+            Descriptions = p.Descriptions
+    .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
+    .ToList(),
+
+
+
+
             ShortDescription = p.FullDescription,
             Category = p.Category.Replace("-", " "),
             CateogryValue = p.CategoryValue,
@@ -641,12 +648,18 @@ public class ProductRepository(WallShopContext ctx)
             .ToList();
     }
 
-    public async Task<List<ProductOverviewDto>> GetProductsByCategory(QueryParameters queryParameters , int Id, string? userId = null)
+    public async Task<PagedResult<ProductOverviewDto>> GetProductsByCategory(QueryParameters queryParameters , int Id, string? userId = null)
     {
+        int currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
+        int pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
         var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
-
-        return await ctx.Products
-            .Where(a => a.Category.ToLower() == queryParameters.category.ToLower() && a.Id != Id)
+        var product=ctx.Products.FirstOrDefault(a => a.Id == Id);
+        if (product == null) 
+            {
+            return new PagedResult<ProductOverviewDto>();
+        }
+        var dtoQuery =ctx.Products
+            .Where(a => a.CategoryValue.ToLower() == product.CategoryValue.ToLower() && a.Id != Id)
             .Include(a => a.Images)
             .Take(4)
             .Select(p => new ProductOverviewDto
@@ -659,16 +672,25 @@ public class ProductRepository(WallShopContext ctx)
                 TotalPeopleRating = p.TotalRatePeople,
                 AverageRatingPeople = p.AverageRate,
                 IsInWishList = wishlistIds.Contains(p.Id)
-            }).ToListAsync();
+            }).AsQueryable();
+        string categoryNameDisplay =  product.Category.Replace("-", " ");
+        return await dtoQuery.ToPagedListAsync(currentPage, pageSize, categoryNameDisplay);
+
     }
 
 
-    public async Task<List<ProductTranslationOverviewDto>> GetProductTranslationsByCategory(QueryParameters queryParameters, int Id, string? userId = null)
+    public async Task<PagedResult<ProductTranslationOverviewDto>> GetProductTranslationsByCategory(QueryParameters queryParameters, int Id, string? userId = null)
     {
+        int currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
+        int pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
         var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
-
-        return await ctx.ProductTranslations
-            .Where(a => a.Category.ToLower() == queryParameters.category.ToLower() && a.Id != Id)
+        var product = ctx.Products.FirstOrDefault(a => a.Id == Id);
+        if (product == null)
+        {
+            return new PagedResult<ProductTranslationOverviewDto>();
+        }
+        var dtoQuery = ctx.ProductTranslations
+            .Where(a => a.Category.ToLower() == product.CategoryValue.ToLower() && a.Id != Id)
             .Include(a=>a.Product)
             .ThenInclude(a => a.Images)
             .Take(4)
@@ -680,8 +702,11 @@ public class ProductRepository(WallShopContext ctx)
                 TotalPeopleRating = pt.Product.TotalRatePeople,
                 AverageRatingPeople = pt.Product.AverageRate,
                 IsInWishList = wishlistIds.Contains(pt.Id)
-            })
-            .ToListAsync<ProductTranslationOverviewDto>();
+            }).AsQueryable();
+
+
+        string categoryNameDisplay = product.CategoryValue.Replace("-", " ");
+        return await dtoQuery.ToPagedListAsync(currentPage, pageSize, categoryNameDisplay);
     }
 
     public void SaveChanges()

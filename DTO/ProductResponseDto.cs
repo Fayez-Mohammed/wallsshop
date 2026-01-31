@@ -17,10 +17,10 @@ public class ProductResponseDto
     
     
     public string ShortDescription { get; set; }
-    
-    
-    public string Description { get; set; }
-    
+
+
+    public List<string> Descriptions { get; set; }
+
     public string CateogryValue { get; set; }
     public string Category { get; set; }
     

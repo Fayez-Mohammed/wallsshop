@@ -62,13 +62,13 @@ public class ProductController(ProductRepository products , IWebHostEnvironment 
 
                var list = await products.GetProductsByCategory(queryParameters, id,userId);
 
-               list = list.Where(p => p.Id != id).ToList();
+              // list = list.Where(p => p.Id != id).ToList();
 
                return Ok(new { Response = list });
           }
           var list1 = await products.GetProductTranslationsByCategory(queryParameters, id,userId);
           
-          list1 = list1.Where(p => p.Id != id).ToList();
+        //  list1 = list1.Where(p => p.Id != id).ToList();
           
           return Ok(new {Response =list1});
      }
