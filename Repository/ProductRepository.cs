@@ -433,7 +433,8 @@ public class ProductRepository(WallShopContext ctx)
         if (!string.IsNullOrEmpty(queryParameters.category))
         {
             var cat = queryParameters.category.ToLower();
-            query = query.Where(a => a.Category.ToLower() == cat);
+            query = query.Where(a => a.Product.CategoryValue.ToLower() == cat);
+           // query = query.Where(a => a.Category.ToLower() == cat);
             var category = await ctx.CategoryImages.FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == cat);
             if (category != null)
             {
