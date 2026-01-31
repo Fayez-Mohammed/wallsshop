@@ -12,4 +12,5 @@ public class ProductTranslationOverviewDto
     
     public decimal AverageRatingPeople { get; set; }
     public bool IsInWishList { get; set; }
+    public int PageNumber { get; set; }
 }

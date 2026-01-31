@@ -54,7 +54,11 @@ builder.Services.AddScoped<ReviewRepository>();
 builder.Services.AddScoped<ProductRepository>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+////////////////
+//builder.Services.AddDistributedMemoryCache();
 
+//builder.Services.AddScoped<CartService>();
+////////////////////
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>

@@ -27,7 +27,7 @@ namespace WallsShop.Properties.Entity;
 public class Order
 {
     [Key]
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    public int Id { get; set; } 
     public string? UserId { get; set; }
     public DateTime OrderDate { get; set; } = DateTime.UtcNow;
     [MaxLength(10)]

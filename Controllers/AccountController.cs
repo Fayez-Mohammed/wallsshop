@@ -121,7 +121,10 @@ public class AccountController : ControllerBase
  
             if (loginDto.Wishlist?.ProductIds?.Any() == true)
                 await _wishlistService.AddToWishlist(loginDto.Wishlist, user.Id);
- 
+         if(user.EmailConfirmed == false)
+            {
+                return Unauthorized(new { response = "Email not confirmed. Please verify your email before logging in." });
+            }
             var token = _tokenService.CreateToken(user);
 
             return Ok(new { Email = user.Email, Token = token });

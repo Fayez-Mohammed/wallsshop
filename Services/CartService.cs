@@ -1,6 +1,8 @@
-﻿using System.Collections.Concurrent;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using System.Collections.Concurrent;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using WallsShop.Context;
 using WallsShop.DTO;
 
@@ -11,10 +13,11 @@ public class CartService
     private readonly ConcurrentDictionary<string, CachedCart> _carts = new();
 
     private readonly IServiceProvider _serviceProvider;
-
-    public CartService(IServiceProvider serviceProvider)
+ //   private readonly IDistributedCache _cache;
+    public CartService(IServiceProvider serviceProvider)//, IDistributedCache cache
     {
         _serviceProvider = serviceProvider;
+    //    _cache = cache;
     }
     public async Task AddToCart(string userId, CartItem item)
     {
@@ -91,6 +94,8 @@ public class CartService
 
          var items = await GetProductImageName(cached.Cart.Items, languageCode);
             return items;
+
+
         }
 
         return new List<CartItem>();
@@ -118,10 +123,16 @@ public class CartService
                             VariantId = item.VariantId,
                             Quantity = item.Quantity,
                             Color = item.Color,
-                            Size = a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Size ?? "",
-                            Type = a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Type ?? "",
-                            UnitPrice = a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Price > 0 ?
-                                a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Price : a.Price,
+                            Size = a.Variants.FirstOrDefault(b => b.Id == item.VariantId).Size ?? "",
+                            Type = a.Variants.FirstOrDefault(b => b.Id == item.VariantId).Type ?? "",
+                            UnitPrice = item.VariantId > 0
+                            ? (a.Variants.FirstOrDefault(b => b.Id == item.VariantId).Price)
+                            : a.PriceAfterDiscount,
+                            OriginalPrice = item.VariantId > 0
+                             ? (decimal)(a.Variants.FirstOrDefault(b => b.Id == item.VariantId).PriceBeforeDiscount ?? a.Variants.FirstOrDefault(b => b.Id == item.VariantId).Price)
+                             : a.Price,
+                            //UnitPrice = a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Price > 0 ?
+                            //    a.Variants.Where(b => b.Id == item.VariantId).FirstOrDefault().Price : a.Price,
                             ImageUrl = a.Images.FirstOrDefault().RelativePath ?? string.Empty,
                         }).FirstOrDefault();
                     if (product == null) throw new Exception("Product does not exist");
@@ -156,13 +167,19 @@ public class CartService
 
                             Color = item.Color,
                             Quantity = item.Quantity,
+                            UnitPrice = item.VariantId > 0
+                            ? (t.Product.Variants.FirstOrDefault(v => v.Id == item.VariantId).Price)
+                            : t.Product.PriceAfterDiscount,
 
-                            UnitPrice = t.Product.Variants
-                                        .Where(v => v.Id == item.VariantId)
-                                        .Select(v => v.Price > 0 ? v.Price : t.Product.Price)
-                                        .FirstOrDefault(),
+                            OriginalPrice = item.VariantId > 0
+                            ? (decimal)(t.Product.Variants.FirstOrDefault(v => v.Id == item.VariantId).PriceBeforeDiscount ?? t.Product.Variants.FirstOrDefault(v => v.Id == item.VariantId).Price)
+                            : t.Product.Price,
+                            //UnitPrice = t.Product.Variants
+                            //            .Where(v => v.Id == item.VariantId)
+                            //            .Select(v => v.Price > 0 ? v.Price : t.Product.Price)
+                            //            .FirstOrDefault(),
 
-                            
+
                             ImageUrl = t.Product.Images.FirstOrDefault().RelativePath ?? string.Empty,
                         })
                         .FirstOrDefault();
@@ -217,5 +234,57 @@ public class CartService
     {
         // TryRemove بتحذف العنصر من الـ Dictionary بأمان
         _carts.TryRemove(userId, out _);
+    }
+
+    // داخل CartService.cs
+
+    public async Task<List<CartItem>?> UpdateQuantityAsync(string userId, int productId, int variantId, int quantity, string color, string languageCode)
+    {
+      
+        if (_carts.TryGetValue(userId, out var cachedCart))
+        {
+           
+            var itemToUpdate = cachedCart.Cart.Items
+                .FirstOrDefault(i => i.ProductId == productId &&
+                                     i.VariantId == variantId &&
+                                     i.Color == (color ?? ""));
+
+            if (itemToUpdate != null)
+            {
+                if (quantity <= 0)
+                {
+                    cachedCart.Cart.Items.Remove(itemToUpdate);
+                }
+                else
+                {
+                    itemToUpdate.Quantity = quantity;
+                }
+
+                return await GetCartItems(userId, languageCode);
+            }
+        }
+
+        return null;
+    }
+    // داخل CartService.cs
+
+    public async Task<List<CartItem>?> RemoveItemAsync(string userId, int productId, int variantId, string color, string languageCode)
+    {
+        if (_carts.TryGetValue(userId, out var cachedCart))
+        {
+            var itemToDelete = cachedCart.Cart.Items
+                .FirstOrDefault(i => i.ProductId == productId &&
+                                     i.VariantId == variantId &&
+                                     i.Color == (color ?? ""));
+
+            if (itemToDelete != null)
+            {
+                cachedCart.Cart.Items.Remove(itemToDelete);
+
+                return await GetCartItems(userId, languageCode);
+            }
+        }
+
+        return null;
     }
 }

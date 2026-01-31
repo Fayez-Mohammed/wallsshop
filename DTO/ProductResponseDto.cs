@@ -4,6 +4,7 @@ namespace WallsShop.DTO;
 
 public class ProductResponseDto
 {
+    public int PageNumber { get; set; }
     public int Id { get; set; }
     public string Name { get; set; }
     public string SKU { get; set; }
@@ -26,4 +27,11 @@ public class ProductResponseDto
      
     public List<ProductImageDto> Images { get; set; }
     public List<ProductVariantDto> Variants { get; set; }
+}
+public class PagedResult<T>
+{
+    public List<T> Data { get; set; }
+    public int TotalPages { get; set; }
+    public int CurrentPage { get; set; }
+    public string CategoryName { get; set; }
 }
