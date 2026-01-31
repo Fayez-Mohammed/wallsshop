@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using WallsShop.Context;
 using WallsShop.DTO;
 using WallsShop.Entity;
+using WallsShop.Extensions;
 using WallsShop.Properties.Entity;
  
 
@@ -10,23 +11,56 @@ namespace WallsShop.Repository;
 
 public class ProductRepository(WallShopContext ctx)
 {
-    public async Task<List<ProductResponseDto>> GetArabicProductById(QueryParameters queryParameters, string? userId = null)
+    public async Task<PagedResult<ProductResponseDto>> GetArabicProductById(QueryParameters queryParameters, string? userId = null)
     {
         var query = ctx.Products.AsQueryable();
-        //////////////
-        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
-        /////////////////////
+        if (queryParameters.search != null)
+        {
+           
+                query = query.Where(a => a.Name.Contains(queryParameters.search) || a.Descriptions.Contains(queryParameters.search));
+            
+           
+
+        }
+        string categoryNameDisplay = "All Categories";
+        //if (!string.IsNullOrEmpty(queryParameters.category))
+        //{
+        //    var cat = queryParameters.category.ToLower();
+        //    query = query.Where(a => a.Category.ToLower() == cat);
+        //    categoryNameDisplay = queryParameters.category;
+        //}
         if (!string.IsNullOrEmpty(queryParameters.category))
         {
             var cat = queryParameters.category.ToLower();
-            query = query.Where(a => a.Category.ToLower() == cat);
+            query = query.Where(a => a.CategoryValue.ToLower() == cat);
+            var category = await ctx.CategoryImages.FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == cat);
+            if (category != null)
+            {
+                categoryNameDisplay = queryParameters.LanguageCode == "en" ? category.CategoryValue.Replace("-", " ") : category.Category.Replace("-", " ");
+
+            }
+            else
+            {
+                categoryNameDisplay = queryParameters.category;
+            }
         }
+        int currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
+
+        //////////////
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+        /////////////////////
+      
         
         if (queryParameters.id > 0)
         {
             query = query.Where(a => a.Id == queryParameters.id);
         }
+        //var totalCount = await query.CountAsync();
 
+        //var pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 10;
+        //var currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
+
+        //var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
         query = (queryParameters.order ?? "").ToLower() switch
         {
@@ -39,15 +73,46 @@ public class ProductRepository(WallShopContext ctx)
             _ => query.OrderBy(a => a.Id) // Default ordering is good practice for pagination
         };
 
-       
-        if (queryParameters.page > 0 && queryParameters.pageSize > 0)
-        {
-            var skip = (queryParameters.page - 1) * queryParameters.pageSize;
-            query = query.Skip(skip).Take(queryParameters.pageSize);
-        }
 
-     
-        return await query.Select(p => new ProductResponseDto
+        //if (queryParameters.page > 0 && queryParameters.pageSize > 0)
+        //{
+        //    var skip = (queryParameters.page - 1) * queryParameters.pageSize;
+        //    query = query.Skip(skip).Take(queryParameters.pageSize);
+        //}
+
+
+        //return await query.Select(p => new ProductResponseDto
+        //{
+        //    Id = p.Id,
+        //    Name = p.Name,
+        //    Price = p.Price,
+        //    PriceAfterDiscount = p.PriceAfterDiscount,
+        //    Description = p.Descriptions,
+        //    ShortDescription = p.FullDescription,
+        //    Category = p.Category.Replace("-"," "),
+        //    CateogryValue = p.CategoryValue,
+        //    SKU = p.SKU,
+        //    IsInWishList = wishlistIds.Contains(p.Id),
+        //    Images = p.Images.Select(img => new ProductImageDto
+        //    {
+        //        Path = img.RelativePath
+        //    }).ToList(),
+        //    Colors = p.Colors.Where(a=>a.LanguageCode == "ar").Select(c => c.Color).ToList(),
+        //    Variants = p.Variants
+        //        .Where(a=>a.LanguageCode == "ar")
+        //        .Select(v => new ProductVariantDto
+        //    {
+        //        Id = v.Id,
+        //        Type = v.Type,
+        //        Size = v.Size,
+        //        Price = v.Price,
+        //        PriceBeforeDiscount = v.PriceBeforeDiscount ?? 0
+        //    }).ToList()
+        //}).ToListAsync();
+
+
+
+        var dtoQuery = query.Select(p => new ProductResponseDto
         {
             Id = p.Id,
             Name = p.Name,
@@ -55,29 +120,34 @@ public class ProductRepository(WallShopContext ctx)
             PriceAfterDiscount = p.PriceAfterDiscount,
             Description = p.Descriptions,
             ShortDescription = p.FullDescription,
-            Category = p.Category.Replace("-"," "),
+            Category = p.Category.Replace("-", " "),
             CateogryValue = p.CategoryValue,
             SKU = p.SKU,
+
+            PageNumber = currentPage, 
+
             IsInWishList = wishlistIds.Contains(p.Id),
-            Images = p.Images.Select(img => new ProductImageDto
-            {
-                Path = img.RelativePath
-            }).ToList(),
-            Colors = p.Colors.Where(a=>a.LanguageCode == "ar").Select(c => c.Color).ToList(),
-            Variants = p.Variants
-                .Where(a=>a.LanguageCode == "ar")
+            Images = p.Images.Select(img => new ProductImageDto { Path = img.RelativePath }).ToList(),
+            Colors = p.Colors.Where(a => a.LanguageCode == "ar").Select(c => c.Color).ToList(),
+            Variants = p.Variants.Where(a => a.LanguageCode == "ar")
                 .Select(v => new ProductVariantDto
-            {
-                Id = v.Id,
-                Type = v.Type,
-                Size = v.Size,
-                Price = v.Price,
-                PriceBeforeDiscount = v.PriceBeforeDiscount ?? 0
-            }).ToList()
-        }).ToListAsync();
+                {
+                    Id = v.Id,
+                    Type = v.Type,
+                    Size = v.Size,
+                    Price = v.Price,
+                    PriceBeforeDiscount = v.PriceBeforeDiscount ?? 0
+                }).ToList()
+        });
+
+        return await dtoQuery.ToPagedListAsync(
+            queryParameters.page,
+            queryParameters.pageSize,
+            categoryNameDisplay
+        );
     }
 
-    public async Task<List<ProductTranslationDto>> GetEnglishProductById(QueryParameters queryParameters, string? userId = null)
+    public async Task<PagedResult<ProductTranslationDto>> GetEnglishProductById(QueryParameters queryParameters, string? userId = null)
     {
  
         var query = ctx
@@ -87,6 +157,40 @@ public class ProductRepository(WallShopContext ctx)
             .Include(t => t.Product)
             .ThenInclude(t=>t.Images)
             .AsQueryable();
+        if (queryParameters.search != null)
+        {
+            
+                var translatedProductIds = await ctx.ProductTranslations
+                    .Where(t => t.Name.Contains(queryParameters.search) || t.Description.Contains(queryParameters.search))
+                    .Select(t => t.ProductId)
+                    .ToListAsync();
+                query = query.Where(a => translatedProductIds.Contains(a.Id));
+            
+
+        }
+        string categoryNameDisplay = "All Categories";
+        //if (!string.IsNullOrEmpty(queryParameters.category))
+        //{
+        //    var cat = queryParameters.category.ToLower();
+        //    query = query.Where(a => a.Category.ToLower() == cat);
+        //    categoryNameDisplay = queryParameters.category;
+        //}
+        if (!string.IsNullOrEmpty(queryParameters.category))
+        {
+            var cat = queryParameters.category.ToLower();
+            query = query.Where(a => a.Category.ToLower() == cat);
+            var category = await ctx.CategoryImages.FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == cat);
+            if (category != null)
+            {
+                categoryNameDisplay = queryParameters.LanguageCode == "en" ? category.CategoryValue.Replace("-", " ") : category.Category.Replace("-", " ");
+
+            }
+            else
+            {
+                categoryNameDisplay = queryParameters.category;
+            }
+        }
+        int currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
         var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
 
         if (queryParameters.id > 0)
@@ -99,11 +203,11 @@ public class ProductRepository(WallShopContext ctx)
             query = query.Where(a => a.Category.ToLower() == queryParameters.category.ToLower());
         }
         
-        if (queryParameters.page > 0 && queryParameters.pageSize > 0)
-        {
-            var skip = (queryParameters.page - 1) * queryParameters.pageSize;
-            query = query.Skip(skip).Take(queryParameters.pageSize);
-        }
+        //if (queryParameters.page > 0 && queryParameters.pageSize > 0)
+        //{
+        //    var skip = (queryParameters.page - 1) * queryParameters.pageSize;
+        //    query = query.Skip(skip).Take(queryParameters.pageSize);
+        //}
          
         
         query = queryParameters.order.ToLower() switch
@@ -116,138 +220,325 @@ public class ProductRepository(WallShopContext ctx)
 			"latest_desc" => query.OrderByDescending(a => a.Product.Created),
 			_ => query
         };
+        var dtoQuery = query.Select(pt => new ProductTranslationDto
+        {
+            Id = pt.Id,
+            ProductId = pt.ProductId,
+            Name = pt.Name,
+            ShortDescription = pt.Description.Split(new string[] { "\n" }, StringSplitOptions.RemoveEmptyEntries)[0],
+            Descriptions = pt.Description.Split(new[] { "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            Category = pt.Category.Replace("-", " "),
+            AverageRate = pt.Product.AverageRate,
 
-        return  await query.Select(pt => new ProductTranslationDto{
-                Id = pt.Id,
-                ProductId = pt.ProductId,
-                Name = pt.Name,
-                ShortDescription = pt.Description.Split(new string []
-                {
-                     "\n"
-                },StringSplitOptions.RemoveEmptyEntries)[0],
-                Descriptions = pt.Description.Split(new[] { "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries).ToList() ,
-                Category = pt.Category.Replace("-"," "),
-                AverageRate = pt.Product.AverageRate,
-                Variants = pt.Product.Variants.Where(a=>a.LanguageCode == "en").ToList(),
-                Price = pt.Product.Price,
-                PriceAfterDiscount = pt.Product.PriceAfterDiscount,
-                SKU = pt.Product.SKU,
-            IsInWishList = wishlistIds.Contains(pt.Id),
+            PageNumber = currentPage,
+
+            Variants = pt.Product.Variants.Where(a => a.LanguageCode == "en").ToList(),
+            Price = pt.Product.Price,
+            PriceAfterDiscount = pt.Product.PriceAfterDiscount,
+            SKU = pt.Product.SKU,
+            IsInWishList = wishlistIds.Contains(pt.Id), 
             Images = pt.Product.Images.Select(img => new ProductImageDto()
-                {
-                    Path = img.RelativePath
-                }).ToList(),
-                Colors = pt.Product.Colors.Where(a=>a.LanguageCode == "en").Select(c => c.Color).ToList()
-            })
-            .ToListAsync<ProductTranslationDto>();;
+            {
+                Path = img.RelativePath
+            }).ToList(),
+            Colors = pt.Product.Colors.Where(a => a.LanguageCode == "en").Select(c => c.Color).ToList()
+        });
+
+        return await dtoQuery.ToPagedListAsync(queryParameters.page, queryParameters.pageSize, categoryNameDisplay);
+        //return  await query.Select(pt => new ProductTranslationDto{
+        //        Id = pt.Id,
+        //        ProductId = pt.ProductId,
+        //        Name = pt.Name,
+        //        ShortDescription = pt.Description.Split(new string []
+        //        {
+        //             "\n"
+        //        },StringSplitOptions.RemoveEmptyEntries)[0],
+        //        Descriptions = pt.Description.Split(new[] { "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries).ToList() ,
+        //        Category = pt.Category.Replace("-"," "),
+        //        AverageRate = pt.Product.AverageRate,
+        //        Variants = pt.Product.Variants.Where(a=>a.LanguageCode == "en").ToList(),
+        //        Price = pt.Product.Price,
+        //        PriceAfterDiscount = pt.Product.PriceAfterDiscount,
+        //        SKU = pt.Product.SKU,
+        //    IsInWishList = wishlistIds.Contains(pt.Id),
+        //    Images = pt.Product.Images.Select(img => new ProductImageDto()
+        //        {
+        //            Path = img.RelativePath
+        //        }).ToList(),
+        //        Colors = pt.Product.Colors.Where(a=>a.LanguageCode == "en").Select(c => c.Color).ToList()
+        //    })
+        //    .ToListAsync<ProductTranslationDto>();;
     }
 
-    public async Task<List<ProductOverviewDto>> GetProductsOverview(QueryParameters queryParameters, string? userId = null)
+    //public async Task<PagedResult<ProductOverviewDto>> GetProductsOverview(QueryParameters queryParameters, string? userId = null)
+    //{
+    //  //  queryParameters.page = queryParameters.page > 0 ? queryParameters.page   :  1;
+    //    queryParameters.pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
+
+    //    var query = ctx
+    //        .Products
+    //        .Include(p => p.Variants)   
+    //        .Include(t=>t.Images)
+    //        .AsQueryable();
+
+    //    string categoryNameDisplay = "All Categories";
+    //    if (!string.IsNullOrEmpty(queryParameters.category))
+    //    {
+    //        var cat = queryParameters.category.ToLower();
+    //        query = query.Where(a => a.Category.ToLower() == cat);
+    //        categoryNameDisplay = queryParameters.category;
+    //    }
+    //    int currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
+    //    var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+
+    //    if (!string.IsNullOrEmpty(queryParameters.category))
+    //    {
+    //        query = query.Where(a => a.Category.ToLower() == queryParameters.category.ToLower());
+    //    }
+
+    //    //if (queryParameters.page > 0 && queryParameters.pageSize > 0)
+    //    //{
+    //    //    var skip = (queryParameters.page - 1) * queryParameters.pageSize;
+    //    //    query = query.Skip(skip).Take(queryParameters.pageSize);
+    //    //}
+
+
+    //    query = queryParameters.order.ToLower() switch
+    //    {
+    //        "price_asc" => query.OrderBy(a => a.Price),
+    //        "price_desc" => query.OrderByDescending(a => a.Price),
+    //        "rating_desc" => query.OrderByDescending(a => a.AverageRate),
+    //        "rating_asc" => query.OrderBy(a => a.AverageRate),
+    //        "latest_asc" => query.OrderBy(a=>a.Created),
+    //        "latest_desc" => query.OrderByDescending(a => a.Created),
+    //        _ => query
+    //    };
+
+    //    var dtoQuery =  query.Select(p => new ProductOverviewDto
+    //    {
+    //        Id = p.Id,
+    //        Name = p.Name,
+    //        Price = p.Price,
+    //        PriceAfterDiscount = p.PriceAfterDiscount,
+    //        PageNumber = currentPage,
+    //        ImageUrl = p.Images.FirstOrDefault() != null ? p.Images.FirstOrDefault().RelativePath : null,
+    //        TotalRatingPeople = p.TotalRatePeople,
+    //        AverageRatingPeople = p.AverageRate,
+    //        IsInWishList = wishlistIds.Contains(p.Id),
+    //    });
+
+    //    return await dtoQuery.ToPagedListAsync(queryParameters.page, queryParameters.pageSize, categoryNameDisplay);
+    //}
+    public async Task<PagedResult<ProductOverviewDto>> GetProductsOverview(QueryParameters queryParameters, string? userId = null)
     {
-        queryParameters.page = queryParameters.page > 0 ? queryParameters.page   :  1;
-        queryParameters.pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
-        
-        var query = ctx
-            .Products
-            .Include(p => p.Variants)   
-            .Include(t=>t.Images)
-            .AsQueryable();
+       
+        int currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
+        int pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
 
-
-        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
-
+        var query = ctx.Products.AsQueryable();
+        if(queryParameters.search != null)
+        {
+            if (queryParameters.LanguageCode == "ar")
+            {
+                query = query.Where(a => a.Name.Contains(queryParameters.search) || a.Descriptions.Contains(queryParameters.search));
+            }
+            else
+            {
+                var translatedProductIds = await ctx.ProductTranslations
+                    .Where(t => t.Name.Contains(queryParameters.search) || t.Description.Contains(queryParameters.search))
+                    .Select(t => t.ProductId)
+                    .ToListAsync();
+                query = query.Where(a => translatedProductIds.Contains(a.Id));
+            }
+       
+        }
+        string categoryNameDisplay = "All Categories";
         if (!string.IsNullOrEmpty(queryParameters.category))
         {
-            query = query.Where(a => a.Category.ToLower() == queryParameters.category.ToLower());
+            var cat = queryParameters.category.ToLower();
+            query = query.Where(a => a.CategoryValue.ToLower() == cat);
+            var category= await ctx.CategoryImages.FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == cat);
+            if (category != null)
+            {
+                categoryNameDisplay = queryParameters.LanguageCode == "en" ? category.CategoryValue.Replace("-", " ") : category.Category.Replace("-", " ");
+
+            }
+            else
+            {
+                categoryNameDisplay = queryParameters.category;
+            }
         }
-        
-        if (queryParameters.page > 0 && queryParameters.pageSize > 0)
-        {
-            var skip = (queryParameters.page - 1) * queryParameters.pageSize;
-            query = query.Skip(skip).Take(queryParameters.pageSize);
-        }
-         
-        
-        query = queryParameters.order.ToLower() switch
+
+        query = (queryParameters.order ?? "").ToLower() switch
         {
             "price_asc" => query.OrderBy(a => a.Price),
             "price_desc" => query.OrderByDescending(a => a.Price),
             "rating_desc" => query.OrderByDescending(a => a.AverageRate),
             "rating_asc" => query.OrderBy(a => a.AverageRate),
-            "latest_asc" => query.OrderBy(a=>a.Created),
+            "latest_asc" => query.OrderBy(a => a.Created),
             "latest_desc" => query.OrderByDescending(a => a.Created),
-            _ => query
+            _ => query.OrderBy(a => a.Id) 
         };
-         
-        var productOverviews =  query.Select(p => new ProductOverviewDto
+
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+
+        var dtoQuery = query.Select(p => new ProductOverviewDto
         {
             Id = p.Id,
             Name = p.Name,
             Price = p.Price,
             PriceAfterDiscount = p.PriceAfterDiscount,
-            ImageUrl = p.Images.FirstOrDefault().RelativePath,
-            TotalRatingPeople = p.TotalRatePeople,
+
+            PageNumber = currentPage, 
+
+            ImageUrl = p.Images.FirstOrDefault() != null ? p.Images.FirstOrDefault().RelativePath : null,
+
+            TotalPeopleRating = p.TotalRatePeople,
             AverageRatingPeople = p.AverageRate,
             IsInWishList = wishlistIds.Contains(p.Id),
-        }).ToList();
+        });
 
-        return productOverviews;
+       
+        return await dtoQuery.ToPagedListAsync(currentPage, pageSize, categoryNameDisplay);
     }
-    
-    
-    public async Task<List<ProductTranslationOverviewDto>> GetProductsTranslationOverview(QueryParameters queryParameters, string? userId = null)
+    public async Task<PagedResult<ProductTranslationOverviewDto>> GetProductsTranslationOverview(QueryParameters queryParameters, string? userId = null)
     {
-        queryParameters.page = queryParameters.page > 0 ? queryParameters.page   :  1;
-        queryParameters.pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
-         
-         
-        var query = ctx
-            .ProductTranslations
-            .Include(t => t.Product)            
-            .ThenInclude(p => p.Variants)   
-            .Include(p=>p.Product)
-            .ThenInclude(t=>t.Images)
-            .AsQueryable();
+        int currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
+        int pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
+
+        var query = ctx.ProductTranslations.AsQueryable();
+        if (queryParameters.search != null)
+        {
+            if (queryParameters.LanguageCode == "ar")
+            {
+                query = query.Where(a => a.Name.Contains(queryParameters.search) || a.Description.Contains(queryParameters.search));
+            }
+            else
+            {
+                var translatedProductIds = await ctx.ProductTranslations
+                    .Where(t => t.Name.Contains(queryParameters.search) || t.Description.Contains(queryParameters.search))
+                    .Select(t => t.ProductId)
+                    .ToListAsync();
+                query = query.Where(a => translatedProductIds.Contains(a.Id));
+            }
+
+        }
+        string categoryNameDisplay = "All Categories";
+        //if (!string.IsNullOrEmpty(queryParameters.category))
+        //{
+        //    var cat = queryParameters.category.ToLower();
+        //    query = query.Where(a => a.Category.ToLower() == cat);
+        //    categoryNameDisplay = queryParameters.category;
+        //}
+        if (!string.IsNullOrEmpty(queryParameters.category))
+        {
+            var cat = queryParameters.category.ToLower();
+            query = query.Where(a => a.Product.CategoryValue.ToLower() == cat);
+           // query = query.Where(a => a.Category.ToLower() == cat);
+            var category = await ctx.CategoryImages.FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == cat);
+            if (category != null)
+            {
+                categoryNameDisplay = queryParameters.LanguageCode == "en" ? category.CategoryValue.Replace("-", " ") : category.Category.Replace("-", " ");
+
+            }
+            else
+            {
+                categoryNameDisplay = queryParameters.category;
+            }
+        }
+        query = (queryParameters.order ?? "").ToLower() switch
+        {
+            "price_asc" => query.OrderBy(a => a.Product.Price),
+            "price_desc" => query.OrderByDescending(a => a.Product.Price),
+            "rating_desc" => query.OrderByDescending(a => a.Product.AverageRate),
+            "rating_asc" => query.OrderBy(a => a.Product.AverageRate),
+            "latest_asc" => query.OrderBy(a => a.Product.Created),  
+            "latest_desc" => query.OrderByDescending(a => a.Product.Created),
+            _ => query.OrderBy(a => a.Id) 
+        };
 
         var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
 
-        if (!string.IsNullOrEmpty(queryParameters.category))
-        {
-            query = query.Where(a => a.Category.ToLower() == queryParameters.category.ToLower());
-        }
-        
-        if (queryParameters.page > 0 && queryParameters.pageSize > 0)
-        {
-            var skip = (queryParameters.page - 1) * queryParameters.pageSize;
-            query = query.Skip(skip).Take(queryParameters.pageSize);
-        }
-         
-        
-        query = queryParameters.order.ToLower() switch
-        {
-            "price_asc" => query.OrderBy(a => a.Price),
-            "price_desc" => query.OrderByDescending(a => a.Price),
-            "rating_desc" => query.OrderByDescending(a => a.AverageRate),
-            "rating_asc" => query.OrderBy(a => a.AverageRate),
-            _ => query
-        };
-
-        
-        var productOverviews =  query.Select(p => 
-            new ProductTranslationOverviewDto
+        var dtoQuery = query.Select(p => new ProductTranslationOverviewDto
         {
             Id = p.Id,
             Name = p.Name,
-            Price = p.Price,
-            PriceAfterDiscount = p.PriceAfterDiscount,
-            ImageUrl = p.Product.Images.FirstOrDefault().RelativePath,
+            Price = p.Product.Price,
+            PriceAfterDiscount = p.Product.PriceAfterDiscount,
+
+            PageNumber = currentPage,
+
+            ImageUrl = p.Product.Images.FirstOrDefault() != null ? p.Product.Images.FirstOrDefault().RelativePath : null,
+
             TotalPeopleRating = p.Product.TotalRatePeople,
             AverageRatingPeople = p.Product.AverageRate,
-             IsInWishList = wishlistIds.Contains(p.Id)
-            }).ToList();
+            IsInWishList = wishlistIds.Contains(p.Id) 
+        });
 
-        return productOverviews;
+        return await dtoQuery.ToPagedListAsync(currentPage, pageSize, categoryNameDisplay);
     }
+    //public async Task<PagedResult<ProductTranslationOverviewDto>> GetProductsTranslationOverview(QueryParameters queryParameters, string? userId = null)
+    //{
+    //   // queryParameters.page = queryParameters.page > 0 ? queryParameters.page   :  1;
+    //    queryParameters.pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
+
+
+    //    var query = ctx
+    //        .ProductTranslations
+    //        .Include(t => t.Product)            
+    //        .ThenInclude(p => p.Variants)   
+    //        .Include(p=>p.Product)
+    //        .ThenInclude(t=>t.Images)
+    //        .AsQueryable();
+    //    string categoryNameDisplay = "All Categories";
+    //    if (!string.IsNullOrEmpty(queryParameters.category))
+    //    {
+    //        var cat = queryParameters.category.ToLower();
+    //        query = query.Where(a => a.Category.ToLower() == cat);
+    //        categoryNameDisplay = queryParameters.category;
+    //    }
+    //    int currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
+    //    var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+
+    //    //if (!string.IsNullOrEmpty(queryParameters.category))
+    //    //{
+    //    //    query = query.Where(a => a.Category.ToLower() == queryParameters.category.ToLower());
+
+    //    //}
+
+    //    //if (queryParameters.page > 0 && queryParameters.pageSize > 0)
+    //    //{
+    //    //    var skip = (queryParameters.page - 1) * queryParameters.pageSize;
+    //    //    query = query.Skip(skip).Take(queryParameters.pageSize);
+    //    //}
+
+
+    //    query = queryParameters.order.ToLower() switch
+    //    {
+    //        "price_asc" => query.OrderBy(a => a.Price),
+    //        "price_desc" => query.OrderByDescending(a => a.Price),
+    //        "rating_desc" => query.OrderByDescending(a => a.AverageRate),
+    //        "rating_asc" => query.OrderBy(a => a.AverageRate),
+    //        _ => query
+    //    };
+
+
+    //    var dtoQuery =  query.Select(p => 
+    //        new ProductTranslationOverviewDto
+    //    {
+    //        Id = p.Id,
+    //        Name = p.Name,
+    //        Price = p.Price,
+    //        PriceAfterDiscount = p.PriceAfterDiscount,
+    //        PageNumber = currentPage,
+    //            ImageUrl = p.Product.Images.FirstOrDefault().RelativePath,
+    //        TotalPeopleRating = p.Product.TotalRatePeople,
+    //        AverageRatingPeople = p.Product.AverageRate,
+    //         IsInWishList = wishlistIds.Contains(p.Id)
+    //        });
+
+    //    return await dtoQuery.ToPagedListAsync(queryParameters.page, queryParameters.pageSize, categoryNameDisplay);
+    //}
 
     public async Task<List<ProductOverviewDto>> GetTop4RatedProducts(QueryParameters queryParameters, string? userId = null)
     {
@@ -265,7 +556,7 @@ public class ProductRepository(WallShopContext ctx)
                 Price = p.Price,
                 PriceAfterDiscount = p.PriceAfterDiscount,
                 ImageUrl = p.Images.FirstOrDefault().RelativePath,
-                TotalRatingPeople = p.TotalRatePeople,
+                TotalPeopleRating = p.TotalRatePeople,
                 AverageRatingPeople = p.AverageRate,
                 IsInWishList = wishlistIds.Contains(p.Id)
             }).ToListAsync();
@@ -289,7 +580,7 @@ public class ProductRepository(WallShopContext ctx)
                 Price = p.Price,
                 PriceAfterDiscount = p.PriceAfterDiscount,
                 ImageUrl = p.Images.FirstOrDefault().RelativePath,
-                TotalRatingPeople = p.TotalRatePeople,
+                TotalPeopleRating = p.TotalRatePeople,
                 AverageRatingPeople = p.AverageRate,
                   IsInWishList = wishlistIds.Contains(p.Id)
             }).ToListAsync();
@@ -365,7 +656,7 @@ public class ProductRepository(WallShopContext ctx)
                 Price = p.Price,
                 PriceAfterDiscount = p.PriceAfterDiscount,
                 ImageUrl = p.Images.FirstOrDefault().RelativePath,
-                TotalRatingPeople = p.TotalRatePeople,
+                TotalPeopleRating = p.TotalRatePeople,
                 AverageRatingPeople = p.AverageRate,
                 IsInWishList = wishlistIds.Contains(p.Id)
             }).ToListAsync();

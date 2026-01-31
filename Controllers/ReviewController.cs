@@ -13,16 +13,28 @@ namespace WallsShop.Controllers;
 [Authorize]
 public class ReviewController(ReviewRepository repo,UserManager<User> _userManager ) : ControllerBase 
 {
-    [AllowAnonymous]
+    //[AllowAnonymous]
+    //[HttpGet("reviews")]
+    //public async Task<IActionResult> GetReviews([FromQuery] int productId)
+    //{
+    //     var userName = await _userManager.GetUserAsync(User);
+    //        bool isAdmin = User.IsInRole("Admin");
+    //        var reviews = await repo.GetProductReviews(productId, userName?.Name ?? "", isAdmin);
+
+    //        return Ok(new { response = reviews });
+
+
+    //}
     [HttpGet("reviews")]
     public async Task<IActionResult> GetReviews([FromQuery] int productId)
     {
-        var userName = await _userManager.GetUserAsync(User);
+        var user = await _userManager.GetUserAsync(User);
         bool isAdmin = User.IsInRole("Admin");
-        var reviews = await repo.GetProductReviews(productId,userName?.Name ?? "",isAdmin);
-        return Ok(new {response = reviews});
+        string userName = user?.UserName ?? ""; // Changed from Name to UserName
+
+        var reviews = await repo.GetProductReviews(productId, userName, isAdmin);
+        return Ok(new { response = reviews });
     }
-    
     [HttpPost("create-review")]
     public async Task<IActionResult> CreateReview([FromBody] ReviewDto review)
     {

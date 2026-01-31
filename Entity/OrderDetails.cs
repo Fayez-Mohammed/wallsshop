@@ -49,7 +49,7 @@ public class OrderDetails
 
     [Required]
     [ForeignKey("Order")]
-    public string OrderId { get; set; }
+    public int OrderId { get; set; }
     public string ProductName { get; set; }
     [Required]
     public int ProductId { get; set; }

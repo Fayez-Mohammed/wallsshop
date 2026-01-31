@@ -114,4 +114,11 @@ public class ProductController(ProductRepository products , IWebHostEnvironment 
           
           return Ok(new {Response =list1});
      }
+
+    //[HttpPut("UpdateProductById")]
+    //public async Task<IActionResult> UpdateProductById([FromQuery] int id, [FromBody] UpdateProductDTO updateProductDTO)
+    //{
+    //    var product=await products.GetArabicProductById(new QueryParameters { PageNumber = 1, PageSize = 1 }, null);
+    //}
+
 }

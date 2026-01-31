@@ -79,7 +79,7 @@ protected override void OnModelCreating(ModelBuilder mb)
     mb.Entity<Product>(entity =>
     {
         entity.Property(e => e.Price).HasPrecision(18, 2);  
-        entity.Property(e => e.PriceAfterDiscount).HasPrecision(5, 2);  
+        entity.Property(e => e.PriceAfterDiscount).HasPrecision(18, 2);  
         entity.Property(e => e.AverageRate).HasPrecision(3, 2); 
         entity.Property(e => e.RatingSum).HasPrecision(10, 2);
         entity.Property(e => e.TotalRatePeople).HasPrecision(10, 0);

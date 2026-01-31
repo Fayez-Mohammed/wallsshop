@@ -32,4 +32,5 @@ public class ProductTranslationDto
     public List<string> Colors { get; set; }
     
     public bool IsInWishList { get; set; }
+    public int PageNumber { get; internal set; }
 }

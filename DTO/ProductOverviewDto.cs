@@ -10,11 +10,12 @@ public class ProductOverviewDto
     
     public decimal PriceAfterDiscount { get; set; }
     
-    public decimal TotalRatingPeople { get; set; }
+    public decimal TotalPeopleRating { get; set; }
     
     public decimal AverageRatingPeople { get; set; }
     
     public string ImageUrl { get; set; }
     
     public bool IsInWishList { get; set; }
+    public int PageNumber { get; set; }
 }

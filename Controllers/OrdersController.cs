@@ -48,6 +48,7 @@ public class OrdersController : ControllerBase
             
             var order = new Order
             {
+               
                 UserId = userId,
                 OrderDate = DateTime.UtcNow,
                 Status = "Pending",
@@ -87,7 +88,7 @@ public class OrdersController : ControllerBase
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
-            return StatusCode(500, "Error creating order: " + ex.Message);
+            return StatusCode(500, "Error creating order: " + ex.InnerException);
         }
     }
 }
