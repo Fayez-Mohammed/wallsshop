@@ -33,6 +33,19 @@ public class WishlistController(WishlistRepository repo , ProductRepository prod
         return Ok(new { products });
     }
 
+    [HttpGet("CountOfWishlistsByUserId")]
+    public IActionResult CountOfWithlists()
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if(userId == null)
+        {
+            return BadRequest(new { Message = "User not authenticated" });
+        }
+        var count = repo.CountOFWishlistForSpecificUser(userId);
+        return Ok(new { Count = count });
+    }
+
+
     [HttpDelete("remove")]
     public async Task<IActionResult> Remove([FromQuery] int productId)
     {

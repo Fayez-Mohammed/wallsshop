@@ -14,6 +14,7 @@ public class ProductRepository(WallShopContext ctx)
     public async Task<PagedResult<ProductResponseDto>> GetArabicProductById(QueryParameters queryParameters, string? userId = null)
     {
         var query = ctx.Products.AsQueryable();
+        query.Include(c => c.CategoryImage);
         if (queryParameters.search != null)
         {
            
@@ -32,7 +33,7 @@ public class ProductRepository(WallShopContext ctx)
         if (!string.IsNullOrEmpty(queryParameters.category))
         {
             var cat = queryParameters.category.ToLower();
-            query = query.Where(a => a.CategoryValue.ToLower() == cat);
+            query = query.Where(a => a.CategoryImage.CategoryValue.ToLower() == cat);
             var category = await ctx.CategoryImages.FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == cat);
             if (category != null)
             {
@@ -123,12 +124,12 @@ public class ProductRepository(WallShopContext ctx)
     .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
     .ToList(),
 
-
+            AverageRate= p.AverageRate,
 
 
             ShortDescription = p.FullDescription,
-            Category = p.Category.Replace("-", " "),
-            CateogryValue = p.CategoryValue,
+            Category = p.CategoryImage.Category.Replace("-", " "),
+            CateogryValue = p.CategoryImage.CategoryValue,
             SKU = p.SKU,
 
             PageNumber = currentPage, 
@@ -156,13 +157,14 @@ public class ProductRepository(WallShopContext ctx)
 
     public async Task<PagedResult<ProductTranslationDto>> GetEnglishProductById(QueryParameters queryParameters, string? userId = null)
     {
- 
+
         var query = ctx
             .ProductTranslations
-            .Include(t => t.Product)            
-            .ThenInclude(p => p.Variants)   
             .Include(t => t.Product)
-            .ThenInclude(t=>t.Images)
+            .ThenInclude(p => p.Variants)
+            .Include(t => t.Product)
+            .ThenInclude(t => t.Images)
+            .Include(t => t.Product).ThenInclude(c => c.CategoryImage)
             .AsQueryable();
         if (queryParameters.search != null)
         {
@@ -185,7 +187,7 @@ public class ProductRepository(WallShopContext ctx)
         if (!string.IsNullOrEmpty(queryParameters.category))
         {
             var cat = queryParameters.category.ToLower();
-            query = query.Where(a => a.Category.ToLower() == cat);
+            query = query.Where(a => a.Product.CategoryImage.Category.ToLower() == cat);
             var category = await ctx.CategoryImages.FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == cat);
             if (category != null)
             {
@@ -205,10 +207,10 @@ public class ProductRepository(WallShopContext ctx)
             query = query.Where(a => a.Id ==queryParameters.id);
         }
 
-        if (!string.IsNullOrEmpty(queryParameters.category))
-        {
-            query = query.Where(a => a.Category.ToLower() == queryParameters.category.ToLower());
-        }
+        //if (!string.IsNullOrEmpty(queryParameters.category))
+        //{
+        //    query = query.Where(a => a.Category.ToLower() == queryParameters.category.ToLower());
+        //}
         
         //if (queryParameters.page > 0 && queryParameters.pageSize > 0)
         //{
@@ -230,17 +232,28 @@ public class ProductRepository(WallShopContext ctx)
         var dtoQuery = query.Select(pt => new ProductTranslationDto
         {
             Id = pt.Id,
-            ProductId = pt.ProductId,
+           // ProductId = pt.ProductId,
             Name = pt.Name,
             ShortDescription = pt.Description.Split(new string[] { "\n" }, StringSplitOptions.RemoveEmptyEntries)[0],
             Descriptions = pt.Description.Split(new[] { "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
-            Category = pt.Category.Replace("-", " "),
+            Category = pt.Product.CategoryImage.CategoryValue.Replace("-", " "),
+            CateogryValue = pt.Product.CategoryImage.CategoryValue,
             AverageRate = pt.Product.AverageRate,
 
             PageNumber = currentPage,
 
-            Variants = pt.Product.Variants.Where(a => a.LanguageCode == "en").ToList(),
-            Price = pt.Product.Price,
+            //Variants = pt.Product.Variants.Where(a => a.LanguageCode == "ar").ToList(),
+            Variants = pt.Product.Variants.Where(a => a.LanguageCode == "ar")
+                .Select(v => new ProductVariantDto
+                {
+                    Id = v.Id,
+                    Type = v.EnglishType,
+                    Size = v.EnglishSize,
+                    Price = v.Price,
+                    PriceBeforeDiscount = v.PriceBeforeDiscount ?? 0
+                }).ToList(),
+       
+        Price = pt.Product.Price,
             PriceAfterDiscount = pt.Product.PriceAfterDiscount,
             SKU = pt.Product.SKU,
             IsInWishList = wishlistIds.Contains(pt.Id), 
@@ -343,6 +356,7 @@ public class ProductRepository(WallShopContext ctx)
         int pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
 
         var query = ctx.Products.AsQueryable();
+        query.Include(c => c.CategoryImage);
         if(queryParameters.search != null)
         {
             if (queryParameters.LanguageCode == "ar")
@@ -363,7 +377,7 @@ public class ProductRepository(WallShopContext ctx)
         if (!string.IsNullOrEmpty(queryParameters.category))
         {
             var cat = queryParameters.category.ToLower();
-            query = query.Where(a => a.CategoryValue.ToLower() == cat);
+            query = query.Where(a => a.CategoryImage.CategoryValue.ToLower() == cat);
             var category= await ctx.CategoryImages.FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == cat);
             if (category != null)
             {
@@ -395,7 +409,7 @@ public class ProductRepository(WallShopContext ctx)
             Name = p.Name,
             Price = p.Price,
             PriceAfterDiscount = p.PriceAfterDiscount,
-
+            
             PageNumber = currentPage, 
 
             ImageUrl = p.Images.FirstOrDefault() != null ? p.Images.FirstOrDefault().RelativePath : null,
@@ -414,6 +428,7 @@ public class ProductRepository(WallShopContext ctx)
         int pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
 
         var query = ctx.ProductTranslations.AsQueryable();
+        query.Include(t => t.Product).ThenInclude(c => c.CategoryImage);
         if (queryParameters.search != null)
         {
             if (queryParameters.LanguageCode == "ar")
@@ -440,7 +455,7 @@ public class ProductRepository(WallShopContext ctx)
         if (!string.IsNullOrEmpty(queryParameters.category))
         {
             var cat = queryParameters.category.ToLower();
-            query = query.Where(a => a.Product.CategoryValue.ToLower() == cat);
+            query = query.Where(a => a.Product.CategoryImage.CategoryValue.ToLower() == cat);
            // query = query.Where(a => a.Category.ToLower() == cat);
             var category = await ctx.CategoryImages.FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == cat);
             if (category != null)
@@ -643,7 +658,7 @@ public class ProductRepository(WallShopContext ctx)
     public List<string> GetProductTranslationCategories()
     {
         return ctx.ProductTranslations
-            .Select(t => t.Product.Category)
+            .Select(t => t.Product.CategoryImage.Category)
             .Distinct()
             .ToList();
     }
@@ -653,13 +668,15 @@ public class ProductRepository(WallShopContext ctx)
         int currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
         int pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
         var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+       // var product=ctx.Products.Include(c=>c.CategoryImage).FirstOrDefault(a => a.Id == Id);
         var product=ctx.Products.FirstOrDefault(a => a.Id == Id);
+        var categ = ctx.CategoryImages.FirstOrDefault(c => c.Id == product.CategoryFK);
         if (product == null) 
             {
             return new PagedResult<ProductOverviewDto>();
         }
-        var dtoQuery =ctx.Products
-            .Where(a => a.CategoryValue.ToLower() == product.CategoryValue.ToLower() && a.Id != Id)
+        var dtoQuery =ctx.Products.Include(a => a.CategoryImage)
+            .Where(a => a.CategoryImage.CategoryValue.ToLower() == categ.CategoryValue.ToLower() && a.Id != Id)
             .Include(a => a.Images)
             .Take(4)
             .Select(p => new ProductOverviewDto
@@ -673,7 +690,7 @@ public class ProductRepository(WallShopContext ctx)
                 AverageRatingPeople = p.AverageRate,
                 IsInWishList = wishlistIds.Contains(p.Id)
             }).AsQueryable();
-        string categoryNameDisplay =  product.Category.Replace("-", " ");
+        string categoryNameDisplay =  product.CategoryImage.Category.Replace("-", " ");
         return await dtoQuery.ToPagedListAsync(currentPage, pageSize, categoryNameDisplay);
 
     }
@@ -684,13 +701,16 @@ public class ProductRepository(WallShopContext ctx)
         int currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
         int pageSize = queryParameters.pageSize > 0 ? queryParameters.pageSize : 12;
         var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+        //  var product = ctx.Products.Include(c => c.CategoryImage).FirstOrDefault(a => a.Id == Id);
         var product = ctx.Products.FirstOrDefault(a => a.Id == Id);
+        var categ = ctx.CategoryImages.FirstOrDefault(c => c.Id == product.CategoryFK);
+
         if (product == null)
         {
             return new PagedResult<ProductTranslationOverviewDto>();
         }
-        var dtoQuery = ctx.ProductTranslations
-            .Where(a => a.Category.ToLower() == product.CategoryValue.ToLower() && a.Id != Id)
+        var dtoQuery = ctx.ProductTranslations.Include(a => a.Product).ThenInclude(c => c.CategoryImage)
+            .Where(a => a.Product.CategoryImage.CategoryValue.ToLower() == categ.CategoryValue.ToLower() && a.Id != Id)
             .Include(a=>a.Product)
             .ThenInclude(a => a.Images)
             .Take(4)
@@ -698,6 +718,8 @@ public class ProductRepository(WallShopContext ctx)
                 Id = pt.Id,
                 Name = pt.Name,
                 Price = pt.Product.Price,
+                ImageUrl = pt.Product.Images.FirstOrDefault().RelativePath,
+
                 PriceAfterDiscount = pt.Product.PriceAfterDiscount,
                 TotalPeopleRating = pt.Product.TotalRatePeople,
                 AverageRatingPeople = pt.Product.AverageRate,
@@ -705,7 +727,7 @@ public class ProductRepository(WallShopContext ctx)
             }).AsQueryable();
 
 
-        string categoryNameDisplay = product.CategoryValue.Replace("-", " ");
+        string categoryNameDisplay = product.CategoryImage.CategoryValue.Replace("-", " ");
         return await dtoQuery.ToPagedListAsync(currentPage, pageSize, categoryNameDisplay);
     }
 
@@ -733,6 +755,8 @@ public class ProductRepository(WallShopContext ctx)
     {
         try
         {
+          
+            var category = ctx.CategoryImages.FirstOrDefault(c => c.CategoryValue.ToLower() == productDto.CategoryValue.ToLower());
             var product = new Product
             {
                 Name = productDto.Name,
@@ -741,7 +765,9 @@ public class ProductRepository(WallShopContext ctx)
                     ? productDto.PriceBeforeDiscount - productDto.Price
                     : 0,
                 Price = productDto.Price,
-                Category = productDto.Category,
+              //  Category = productDto.Category,
+              CategoryFK= category != null ? category.Id : 0,
+              
                 SKU = productDto.SKU,
                 Created = DateTime.UtcNow,
                 LanguageCode = productDto.LanguageCode,

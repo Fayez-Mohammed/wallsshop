@@ -7,10 +7,11 @@ public class ProductTranslationDto
 {
     public int Id { get; set; }
     
-    public int ProductId { get; set; }
+   // public int ProductId { get; set; }
     
     public string Category { get; set; }
-    
+    public string CateogryValue { get; set; }
+
     public string SKU { get; set; }
     
     public decimal AverageRate { get; set; }
@@ -25,7 +26,7 @@ public class ProductTranslationDto
  
 
     public List<string> Descriptions { get; set; }
-    public List<Variant> Variants { get; set; }
+    public List<ProductVariantDto> Variants { get; set; }
     
     public List<ProductImageDto> Images { get; set; }
     
@@ -33,4 +34,6 @@ public class ProductTranslationDto
     
     public bool IsInWishList { get; set; }
     public int PageNumber { get; internal set; }
+   // public List<ProductVariantDto> Variants { get; set; }
+
 }

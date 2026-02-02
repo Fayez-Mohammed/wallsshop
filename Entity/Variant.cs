@@ -15,7 +15,9 @@ public class Variant
     public virtual Product? Product { get; set; }
     
     public string Size { get; set; }
+    public string? EnglishSize { get; set; }
     public string Type { get; set; }
+    public string? EnglishType { get; set; }
     public decimal Price { get; set; }
     public decimal? PriceBeforeDiscount { get; set; }
   

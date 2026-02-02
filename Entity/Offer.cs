@@ -1,4 +1,6 @@
-﻿namespace WallsShop.Entity;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace WallsShop.Entity;
 
 public class Offer
 {
@@ -14,8 +16,11 @@ public class Offer
     
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
-    
-    public string CateogryValue { get; set; }
+    public int? CategoryFK { get; set; }
+
+    [ForeignKey("CategoryFK")]
+    public virtual CategoryImage CategoryImage { get; set; }
+   // public string CateogryValue { get; set; }
     ////////////
     public string? ImageUrl { get; set; }
 

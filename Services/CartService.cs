@@ -157,12 +157,12 @@ public class CartService
 
                             Size = t.Product.Variants
                                     .Where(v => v.Id == item.VariantId)
-                                    .Select(v => v.Size)
+                                    .Select(v => v.EnglishSize)
                                     .FirstOrDefault() ?? "",
 
                             Type = t.Product.Variants
                                     .Where(v => v.Id == item.VariantId)
-                                    .Select(v => v.Type)
+                                    .Select(v => v.EnglishType)
                                     .FirstOrDefault() ?? "",
 
                             Color = item.Color,
@@ -286,5 +286,19 @@ public class CartService
         }
 
         return null;
+    }
+
+    public int GetCountOfCartsForSpecificUser(string userId)
+    {
+        if (_carts.TryGetValue(userId, out var cached))
+        {
+
+            int CartsCount = cached.Cart.Items.Count;
+            return CartsCount;
+
+
+        }
+
+        return 0;
     }
 }

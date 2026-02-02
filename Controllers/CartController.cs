@@ -146,7 +146,42 @@ public class CartController : ControllerBase
         });
     }
     // داخل CartController.cs
+    [HttpPost("Update-cart-items")]
+    public async Task<IActionResult> UpdateCartItems([FromBody] GetCartDto getCartDto, [FromQuery] string languageCode = "ar")
+    {
+        var authenticatedUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
+        List<CartItem> finalItems = new List<CartItem>();
+
+        if (string.IsNullOrEmpty(authenticatedUserId))
+        {
+
+            if (getCartDto?.ShoppingCart?.Items != null && getCartDto.ShoppingCart.Items.Any())
+            {
+                finalItems = await _cartService.GetProductImageName(getCartDto.ShoppingCart.Items, languageCode);
+            }
+        }
+        else
+        {
+            finalItems = await _cartService.GetCartItems(authenticatedUserId, languageCode);
+        }
+
+
+        var summary = new OrderSummaryDto
+        {
+            TotalOriginalPrice = finalItems.Sum(i => i.OriginalPrice * i.Quantity),
+            TotalPrice = finalItems.Sum(i => i.UnitPrice * i.Quantity),
+            TotalProductsCount = finalItems.Sum(i => i.Quantity)
+        };
+
+        summary.TotalDiscount = summary.TotalPrice - summary.TotalOriginalPrice;
+
+        return Ok(new CartResponseDto
+        {
+            Items = finalItems,
+            Summary = summary
+        });
+    }
     [HttpDelete("delete-item")]
     public async Task<IActionResult> DeleteItem([FromBody] UpdateQuantityRequestDto request, [FromQuery] string languageCode = "ar")
     {
@@ -181,5 +216,15 @@ public class CartController : ControllerBase
             Items = updatedItems,
             Summary = summary
         });
+    }
+    [HttpGet("CountOfItemsInCartForUser")]
+    public async Task<IActionResult> CountOfItemsInCartForUser()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return Unauthorized("you are not authorized");
+
+        var count =  _cartService.GetCountOfCartsForSpecificUser(userId);
+
+        return Ok(new { Count = count });
     }
 }

@@ -10,9 +10,12 @@ public class Review
     
     
     [MaxLength(200)]
-    public required string Comment { get; set; } 
-    
-     
+    public required string Comment { get; set; }
+
+    public string UserFK { get; set; }
+
+    [ForeignKey("UserFK")] 
+    public virtual User User { get; set; }
     public string UserName { get; set; }
     
     [Required]

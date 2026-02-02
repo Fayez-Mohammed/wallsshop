@@ -9,7 +9,8 @@ public class ProductResponseDto
     public string Name { get; set; }
     public string SKU { get; set; }
     public decimal Price { get; set; }
-    
+    public decimal AverageRate { get; set; }
+
     public decimal PriceAfterDiscount { get; set; }
     public bool IsInWishList { get; set; }
    

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WallsShop.DTO;
@@ -17,6 +18,8 @@ public class OffersController(
     UserManager<User> userManager
     ) : ControllerBase
 {
+    [Authorize("Admin")]
+
     [HttpPost("add-offer")]
    public async Task<IActionResult> AddOffer([FromForm] AddOfferDto model)
    {
@@ -156,9 +159,9 @@ public class OffersController(
 
        return Ok(new {reponse = offers});
    }
-   
-   
-   [HttpDelete("delete-offer")]
+    [Authorize("Admin")]
+
+    [HttpDelete("delete-offer")]
     public async Task<IActionResult> DeleteOffer([FromQuery] int offerId)
     {
         var result = await repo.DeleteOffer(offerId);

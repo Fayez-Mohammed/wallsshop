@@ -11,7 +11,7 @@ public class ProductTranslation
     
     public int ProductId { get; set; }
     
-    public string Category { get; set; }
+    //public string Category { get; set; }
     
     public string SKU { get; set; }
     

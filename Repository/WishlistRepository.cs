@@ -93,6 +93,7 @@ public class WishlistRepository(WallShopContext ctx )
             .ToListAsync();
         return products;
     }
+
     public async Task RemoveFromWishlist(string userId, int productId)
     {
         var wishlistItem = await ctx.Wishlists
@@ -102,5 +103,12 @@ public class WishlistRepository(WallShopContext ctx )
             ctx.Wishlists.Remove(wishlistItem);
             await ctx.SaveChangesAsync();
         }
+    }
+
+    public int CountOFWishlistForSpecificUser(string userId)
+    {
+        var wishlistItemsCount= ctx.Wishlists.Where(w=>w.UserId==userId).Count();
+
+        return wishlistItemsCount;
     }
 }
