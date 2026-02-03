@@ -7,7 +7,8 @@ public class ProductTranslationOverviewDto
     public decimal Price { get; set; }
     public decimal PriceAfterDiscount { get; set; }
     public string ImageUrl { get; set; }
-    
+    public string CategoryEn { get; set; }
+    public string CategoryValue { get; set; }
     public decimal TotalPeopleRating { get; set; }
     
     public decimal AverageRatingPeople { get; set; }

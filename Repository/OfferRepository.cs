@@ -10,13 +10,15 @@ public class OfferRepository(WallShopContext ctx, IWebHostEnvironment env, IConf
 
     public async Task<bool> AddOffer(AddOfferDto dto)
     {
+        var Category = await ctx.CategoryImages
+            .FirstOrDefaultAsync(c => c.CategoryValue == dto.CateogryValue.Replace(" ", "-"));
         Offer offer = new Offer
         {
             Name = dto.Name,
             ArabicName = dto.ArabicName,
             ArabicDescription = dto.ArabicDescription,
             Description = dto.Description,
-            CateogryValue = dto.CateogryValue,
+            CategoryFK = Category != null ? Category.Id : null,
             StartDate =    dto.StartDate,
             EndDate = dto.EndDate,
             IsActive = true,
@@ -77,11 +79,9 @@ public class OfferRepository(WallShopContext ctx, IWebHostEnvironment env, IConf
     //}
     public async Task<List<OfferReturnDto>> GetOffers(string languageCode)
     {
-        // 3. التعديل المهم: بنجيب تاريخ النهاردة
         var today = DateOnly.FromDateTime(DateTime.Now);
 
-        // بنعمل Query أساسي فيه الشرط "السحري" بتاع التاريخ والنشاط
-        var query = ctx.Offers
+        var query = ctx.Offers.Include(o => o.CategoryImage)
             .Where(o => o.IsActive == true && o.EndDate >= today);
 
         if (languageCode.ToLower() == "en")
@@ -91,19 +91,23 @@ public class OfferRepository(WallShopContext ctx, IWebHostEnvironment env, IConf
                 Id = a.Id,
                 Description = a.Description,
                 Name = a.Name,
-                CategoryValue = a.CateogryValue,
+                CategoryEN = a.CategoryImage != null ? a.CategoryImage.CategoryValue : null,
+                CategoryValue = a.CategoryImage.CategoryValue,
                 ImageUrl = a.ImageUrl, 
                 EndDate = a.EndDate    
             }).ToListAsync();
         }
         else
         {
+           
             return await query.Select(a => new OfferReturnDto
             {
                 Id = a.Id,
                 Description = a.ArabicDescription,
                 Name = a.ArabicName,
-                CategoryValue = a.CateogryValue,
+                CategoryAR = a.CategoryImage != null ? a.CategoryImage.Category : null,
+
+                CategoryValue = a.CategoryImage.CategoryValue,
                 ImageUrl = a.ImageUrl, // الصورة
                 EndDate = a.EndDate
             }).ToListAsync();

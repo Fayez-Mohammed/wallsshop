@@ -1,17 +1,20 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using WallsShop.Properties.Entity;
 
 namespace WallsShop.Entity;
 
 public class ProductTranslation
 {
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int Id { get; set; }
     
     [ForeignKey(("ProductId"))]
     
     public int ProductId { get; set; }
     
-    public string Category { get; set; }
+    //public string Category { get; set; }
     
     public string SKU { get; set; }
     

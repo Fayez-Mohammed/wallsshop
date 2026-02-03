@@ -1,13 +1,14 @@
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer; // Add this
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens; // Add this
+using Microsoft.OpenApi.Models;
+using System.Text;
 using WallsShop.Context;
 using WallsShop.Entity;
 using WallsShop.Repository;
+using WallsShop.Repository.Dashboard;
 using WallsShop.Services;
-using Microsoft.OpenApi.Models;
 //using Swashbuckle.AspNetCore.SwaggerGen;
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +53,10 @@ builder.Services.AddScoped<CategoryRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ReviewRepository>();
 builder.Services.AddScoped<ProductRepository>();
+builder.Services.AddScoped<DashboardCategoryRepository>();
+builder.Services.AddScoped<DashboardOfferRepository>();
+builder.Services.AddScoped<OrderRepository>();
+builder.Services.AddSignalR();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 ////////////////
@@ -136,5 +141,5 @@ app.UseAuthentication();
 app.UseAuthorization(); 
 
 app.MapControllers();
-
+app.MapHub<ProductViewHub>("/hubs/product-views");
 app.Run();

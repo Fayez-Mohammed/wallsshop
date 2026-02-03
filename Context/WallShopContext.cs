@@ -66,9 +66,14 @@ protected override void OnModelCreating(ModelBuilder mb)
     mb.Entity<Wishlist>()
         .HasIndex(w => w.UserId)
         .IsUnique(false);
- 
-     
-    mb.Entity<ProductTranslation>()
+
+
+        //mb.Entity<Product>()
+        //      .HasOne(p => p.ProductTranslation)
+        //      .WithOne(t => t.Product)
+        //      .HasForeignKey<ProductTranslation>(t => t.Id);
+
+        mb.Entity<ProductTranslation>()
         .HasOne(t => t.Product)
         .WithMany(p => p.Translations)
         .HasForeignKey(t => t.ProductId)
