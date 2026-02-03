@@ -409,7 +409,8 @@ public class ProductRepository(WallShopContext ctx)
             Name = p.Name,
             Price = p.Price,
             PriceAfterDiscount = p.PriceAfterDiscount,
-            
+            CategoryAr = p.CategoryImage.Category.Replace("-", " "),
+            CategoryValue= p.CategoryImage.CategoryValue,
             PageNumber = currentPage, 
 
             ImageUrl = p.Images.FirstOrDefault() != null ? p.Images.FirstOrDefault().RelativePath : null,
@@ -487,14 +488,15 @@ public class ProductRepository(WallShopContext ctx)
             Name = p.Name,
             Price = p.Product.Price,
             PriceAfterDiscount = p.Product.PriceAfterDiscount,
-
+            CategoryEn = p.Product.CategoryImage.CategoryValue.Replace("-", " "),
+            CategoryValue = p.Product.CategoryImage.CategoryValue,
             PageNumber = currentPage,
 
             ImageUrl = p.Product.Images.FirstOrDefault() != null ? p.Product.Images.FirstOrDefault().RelativePath : null,
 
             TotalPeopleRating = p.Product.TotalRatePeople,
             AverageRatingPeople = p.Product.AverageRate,
-            IsInWishList = wishlistIds.Contains(p.Id) 
+            IsInWishList = wishlistIds.Contains(p.Id)
         });
 
         return await dtoQuery.ToPagedListAsync(currentPage, pageSize, categoryNameDisplay);
@@ -735,8 +737,7 @@ public class ProductRepository(WallShopContext ctx)
     {
         ctx.SaveChanges();
     }
-    // ends here 
-    public bool UpdateProduct(Product product)
+     public bool UpdateProduct(Product product)
     {
         try
         {
@@ -749,76 +750,478 @@ public class ProductRepository(WallShopContext ctx)
         }
     }
 
-     
 
-    public bool AddProduct(ProductAddDto productDto)
+    public async Task<bool> AddProduct(ProductAddDtoaren productDto, IWebHostEnvironment env, IConfiguration config)
     {
+        using var transaction = await ctx.Database.BeginTransactionAsync();
         try
         {
-          
-            var category = ctx.CategoryImages.FirstOrDefault(c => c.CategoryValue.ToLower() == productDto.CategoryValue.ToLower());
-            var product = new Product
+            var category = await ctx.CategoryImages
+                .FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == productDto.CategoryValue.ToLower());
+
+            if (category == null)
+                return false;
+
+            var priceAfterDiscount = productDto.PriceBeforeDiscount.HasValue
+                ? productDto.PriceBeforeDiscount.Value - productDto.Price
+                : 0;
+
+             var product = new Product
             {
-                Name = productDto.Name,
-                FullDescription = productDto.Description,
-                PriceAfterDiscount = productDto.PriceBeforeDiscount != null
-                    ? productDto.PriceBeforeDiscount - productDto.Price
-                    : 0,
+                Name = productDto.NameAR,
+                NameEN = productDto.NameEN,
+                Descriptions = productDto.DescriptionAR,
+                DescriptionsEN = productDto.DescriptionEN,
+                FullDescription = productDto.DescriptionAR,
                 Price = productDto.Price,
-              //  Category = productDto.Category,
-              CategoryFK= category != null ? category.Id : 0,
-              
+                PriceAfterDiscount = priceAfterDiscount,
                 SKU = productDto.SKU,
+                CategoryFK = category.Id,
                 Created = DateTime.UtcNow,
-                LanguageCode = productDto.LanguageCode,
-
-
-                Variants = new List<Variant>(),
-                Colors = new List<ProductColor>()
+                AverageRate = 0,
+                TotalRatePeople = 0,
+                RatingSum = 0,
+                LanguageCode = "ar"
             };
 
+            ctx.Products.Add(product);
+            await ctx.SaveChangesAsync();
 
-            foreach (var se in productDto.Size)
+             var translation = new ProductTranslation
             {
-                var types = productDto.Type.Any() ? productDto.Type : new List<string> { "" };
+                Id=product.Id,
+                ProductId = product.Id,
+                Name = productDto.NameEN,
+                Description = productDto.DescriptionEN,
+                SKU=product.SKU,
+                AverageRate = 0,
+               Price=product.Price,
+               PriceAfterDiscount=product.PriceAfterDiscount
 
-                foreach (var type in types)
+            };
+            ctx.ProductTranslations.Add(translation);
+
+             if (productDto.ColorsAR != null && productDto.ColorsAR.Any())
+            {
+                for (int i = 0; i < productDto.ColorsAR.Count; i++)
                 {
-                    product.Variants.Add(new Variant
+                     ctx.Colors.Add(new ProductColor
                     {
-                        SKU = productDto.SKU,
-                        Size = se,
-                        Type = type,
-                        Price = productDto.Price,
-                        LanguageCode = productDto.LanguageCode,
-                        PriceBeforeDiscount = productDto.PriceBeforeDiscount,
-                        DiscountRate = productDto.PriceBeforeDiscount > 0
-                            ? Math.Round(((productDto.PriceBeforeDiscount - productDto.Price)
-                                          / productDto.PriceBeforeDiscount) * 100, 2)
-                            : 0
+                        ProductId = product.Id,
+                        Color = productDto.ColorsAR[i],
+                        LanguageCode = "ar"
+                    });
+
+                     if (productDto.ColorsEN != null && i < productDto.ColorsEN.Count)
+                    {
+                        ctx.Colors.Add(new ProductColor
+                        {
+                            ProductId = product.Id,
+                            Color = productDto.ColorsEN[i],
+                            LanguageCode = "en"
+                        });
+                    }
+                }
+            }
+
+             if (productDto.SizesAR != null && productDto.SizesAR.Any())
+            {
+                var typesAR = productDto.TypesAR != null && productDto.TypesAR.Any()
+                    ? productDto.TypesAR
+                    : new List<string> { "" };
+
+                var typesEN = productDto.TypesEN != null && productDto.TypesEN.Any()
+                    ? productDto.TypesEN
+                    : new List<string> { "" };
+
+                for (int i = 0; i < productDto.SizesAR.Count; i++)
+                {
+                    var sizeAR = productDto.SizesAR[i];
+                    var sizeEN = productDto.SizesEN != null && i < productDto.SizesEN.Count
+                        ? productDto.SizesEN[i]
+                        : sizeAR;
+
+                    for (int j = 0; j < typesAR.Count; j++)
+                    {
+                        var typeAR = typesAR[j];
+                        var typeEN = j < typesEN.Count ? typesEN[j] : typeAR;
+
+                        decimal discountRate = 0;
+                        if (productDto.PriceBeforeDiscount.HasValue && productDto.PriceBeforeDiscount.Value > 0)
+                        {
+                            discountRate = Math.Round(
+                                ((productDto.PriceBeforeDiscount.Value - productDto.Price) / productDto.PriceBeforeDiscount.Value) * 100,
+                                2
+                            );
+                        }
+
+                         ctx.Variants.Add(new Variant
+                        {
+                            ProductId = product.Id,
+                            SKU = productDto.SKU,
+                            Size = sizeAR,
+                            EnglishSize = sizeEN,
+                            Type = typeAR,
+                            EnglishType = typeEN,
+                            Price = productDto.Price,
+                            PriceBeforeDiscount = productDto.PriceBeforeDiscount,
+                            DiscountRate = discountRate,
+                            LanguageCode = "ar",
+                       //     Quantity = 0
+                        });
+
+                         ctx.Variants.Add(new Variant
+                        {
+                            ProductId = product.Id,
+                            SKU = productDto.SKU,
+                            Size = sizeEN,
+                            EnglishSize = sizeEN,
+                            Type = typeEN,
+                            EnglishType = typeEN,
+                            Price = productDto.Price,
+                            PriceBeforeDiscount = productDto.PriceBeforeDiscount,
+                            DiscountRate = discountRate,
+                            LanguageCode = "en",
+                       //     Quantity = 0
+                        });
+                    }
+                }
+            }
+
+             if (productDto.ImageFiles != null && productDto.ImageFiles.Any())
+            {
+                foreach (var file in productDto.ImageFiles)
+                {
+                    var imageUrl = await SaveImageFile(file, "products", env, config);
+                    ctx.Images.Add(new Image
+                    {
+                        ProductId = product.Id,
+                        RelativePath = imageUrl
+                    });
+                }
+            }
+            else if (productDto.ImageUrls != null && productDto.ImageUrls.Any())
+            {
+                foreach (var url in productDto.ImageUrls)
+                {
+                    ctx.Images.Add(new Image
+                    {
+                        ProductId = product.Id,
+                        RelativePath = url
                     });
                 }
             }
 
-            productDto.Colors.ForEach(color =>
-            {
-                product.Colors.Add(new ProductColor
-                {
-                    Color = color
-                });
-            });
+            await ctx.SaveChangesAsync();
+            await transaction.CommitAsync();
 
-
-            ctx.Products.Add(product);
-
-
-            return ctx.SaveChanges() > 0;
+            return true;
         }
         catch (Exception ex)
         {
+            await transaction.RollbackAsync();
+            Console.WriteLine($"Error adding product: {ex.InnerException}");
             return false;
         }
     }
+ 
+    public async Task<bool> UpdateProduct(int productId, ProductUpdateDto productDto, IWebHostEnvironment env, IConfiguration config)
+    {
+        using var transaction = await ctx.Database.BeginTransactionAsync();
+        try
+        {
+             var product = await ctx.Products
+                //.Include(p => p.ProductTranslations)
+                .Include(p => p.Colors)
+                .Include(p => p.Variants)
+                .Include(p => p.Images)
+                .FirstOrDefaultAsync(p => p.Id == productId);
+
+            if (product == null)
+                return false;
+
+             var category = await ctx.CategoryImages
+                .FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == productDto.CategoryValue.ToLower());
+
+            if (category == null)
+                return false;
+
+            var priceAfterDiscount = productDto.PriceBeforeDiscount.HasValue
+                ? productDto.PriceBeforeDiscount.Value - productDto.Price
+                : 0;
+
+             product.Name = productDto.NameAR;
+            product.NameEN = productDto.NameEN;
+            product.Descriptions = productDto.DescriptionAR;
+            product.DescriptionsEN = productDto.DescriptionEN;
+            product.FullDescription = productDto.fullDescriptionAR;
+            product.Price = productDto.Price;
+            product.PriceAfterDiscount = priceAfterDiscount;
+            product.SKU = productDto.SKU;
+            product.CategoryFK = category.Id;
+
+             var translation = await ctx.ProductTranslations.FirstOrDefaultAsync(t => t.Id == product.Id);
+            if (translation != null)
+            {
+                translation.Name = productDto.NameEN;
+                translation.Description = productDto.DescriptionEN;
+                translation.Price = productDto.Price;
+                translation.PriceAfterDiscount = priceAfterDiscount;
+                translation.SKU = productDto.SKU;
+            }
+            else
+            {
+                ctx.ProductTranslations.Add(new ProductTranslation
+                {
+                    Id = product.Id,
+                    ProductId = product.Id,
+                    Name = productDto.NameEN,
+                    Description = productDto.DescriptionEN,
+                    SKU = productDto.SKU,
+                    AverageRate = 0,
+                    Price = productDto.Price,
+                    PriceAfterDiscount = priceAfterDiscount
+                });
+            }
+
+             if (productDto.ColorsAR != null || productDto.ColorsEN != null)
+            {
+                 var oldColors = product.Colors.ToList();
+                ctx.Colors.RemoveRange(oldColors);
+
+                 if (productDto.ColorsAR != null && productDto.ColorsAR.Any())
+                {
+                    for (int i = 0; i < productDto.ColorsAR.Count; i++)
+                    {
+                        ctx.Colors.Add(new ProductColor
+                        {
+                            ProductId = product.Id,
+                            Color = productDto.ColorsAR[i],
+                            LanguageCode = "ar"
+                        });
+
+                        if (productDto.ColorsEN != null && i < productDto.ColorsEN.Count)
+                        {
+                            ctx.Colors.Add(new ProductColor
+                            {
+                                ProductId = product.Id,
+                                Color = productDto.ColorsEN[i],
+                                LanguageCode = "en"
+                            });
+                        }
+                    }
+                }
+            }
+
+             if (productDto.SizesAR != null || productDto.SizesEN != null)
+            {
+                 var oldVariants = product.Variants.ToList();
+                ctx.Variants.RemoveRange(oldVariants);
+
+                 if (productDto.SizesAR != null && productDto.SizesAR.Any())
+                {
+                    var typesAR = productDto.TypesAR != null && productDto.TypesAR.Any()
+                        ? productDto.TypesAR
+                        : new List<string> { "" };
+
+                    var typesEN = productDto.TypesEN != null && productDto.TypesEN.Any()
+                        ? productDto.TypesEN
+                        : new List<string> { "" };
+
+                    for (int i = 0; i < productDto.SizesAR.Count; i++)
+                    {
+                        var sizeAR = productDto.SizesAR[i];
+                        var sizeEN = productDto.SizesEN != null && i < productDto.SizesEN.Count
+                            ? productDto.SizesEN[i]
+                            : sizeAR;
+
+                        for (int j = 0; j < typesAR.Count; j++)
+                        {
+                            var typeAR = typesAR[j];
+                            var typeEN = j < typesEN.Count ? typesEN[j] : typeAR;
+
+                            decimal discountRate = 0;
+                            if (productDto.PriceBeforeDiscount.HasValue && productDto.PriceBeforeDiscount.Value > 0)
+                            {
+                                discountRate = Math.Round(
+                                    ((productDto.PriceBeforeDiscount.Value - productDto.Price) / productDto.PriceBeforeDiscount.Value) * 100,
+                                    2
+                                );
+                            }
+
+                             ctx.Variants.Add(new Variant
+                            {
+                                ProductId = product.Id,
+                                SKU = productDto.SKU,
+                                Size = sizeAR,
+                                EnglishSize = sizeEN,
+                                Type = typeAR,
+                                EnglishType = typeEN,
+                                Price = productDto.Price,
+                                PriceBeforeDiscount = productDto.PriceBeforeDiscount,
+                                DiscountRate = discountRate,
+                                LanguageCode = "ar"
+                            });
+
+                             ctx.Variants.Add(new Variant
+                            {
+                                ProductId = product.Id,
+                                SKU = productDto.SKU,
+                                Size = sizeEN,
+                                EnglishSize = sizeEN,
+                                Type = typeEN,
+                                EnglishType = typeEN,
+                                Price = productDto.Price,
+                                PriceBeforeDiscount = productDto.PriceBeforeDiscount,
+                                DiscountRate = discountRate,
+                                LanguageCode = "en"
+                            });
+                        }
+                    }
+                }
+            }
+
+             if (productDto.DeleteImageIds != null && productDto.DeleteImageIds.Any())
+            {
+                foreach (var imageId in productDto.DeleteImageIds)
+                {
+                    var image = product.Images.FirstOrDefault(i => i.Id == imageId);
+                    if (image != null)
+                    {
+                         if (!string.IsNullOrEmpty(image.RelativePath) && !image.RelativePath.StartsWith("http"))
+                        {
+                            try
+                            {
+                                var imagePath = Path.Combine(env.WebRootPath, image.RelativePath.TrimStart('/'));
+                                if (File.Exists(imagePath))
+                                {
+                                    File.Delete(imagePath);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error deleting image: {ex.Message}");
+                            }
+                        }
+
+                        ctx.Images.Remove(image);
+                    }
+                }
+            }
+
+            if (productDto.NewImageFiles != null && productDto.NewImageFiles.Any())
+            {
+                foreach (var file in productDto.NewImageFiles)
+                {
+                    var imageUrl = await SaveImageFile(file, "products", env, config);
+                    ctx.Images.Add(new Image
+                    {
+                        ProductId = product.Id,
+                        RelativePath = imageUrl
+                    });
+                }
+            }
+            else if (productDto.NewImageUrls != null && productDto.NewImageUrls.Any())
+            {
+                foreach (var url in productDto.NewImageUrls)
+                {
+                    ctx.Images.Add(new Image
+                    {
+                        ProductId = product.Id,
+                        RelativePath = url
+                    });
+                }
+            }
+
+            await ctx.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            Console.WriteLine($"Error updating product: {ex.InnerException}");
+            return false;
+        }
+    }
+    /// <summary>
+    /// حذف منتج بالكامل (مع جميع البيانات المرتبطة)
+    /// </summary>
+    public async Task<(bool Success, string Message)> DeleteProduct(int productId, IWebHostEnvironment env)
+    {
+        using var transaction = await ctx.Database.BeginTransactionAsync();
+        try
+        {
+            var product = await ctx.Products
+                .Include(p => p.Images)
+            //    .Include(p => p.ProductTranslations)
+                .Include(p => p.Colors)
+                .Include(p => p.Variants)
+                .Include(p => p.Reviews)
+                .FirstOrDefaultAsync(p => p.Id == productId);
+
+            if (product == null)
+                return (false, "المنتج غير موجود");
+
+            // حذف الصور من السيرفر
+            if (product.Images != null && product.Images.Any())
+            {
+                foreach (var image in product.Images)
+                {
+                    if (!string.IsNullOrEmpty(image.RelativePath) && !image.RelativePath.StartsWith("http"))
+                    {
+                        try
+                        {
+                            var imagePath = Path.Combine(env.WebRootPath, image.RelativePath.TrimStart('/'));
+                            if (File.Exists(imagePath))
+                            {
+                                File.Delete(imagePath);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error deleting image: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            var translations = await ctx.ProductTranslations
+                .FirstOrDefaultAsync(t => t.Id == productId);
+          
+            // حذف المنتج (cascade delete للباقي)
+            ctx.Products.Remove(product);
+            ctx.ProductTranslations.Remove(translations);
+            await ctx.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return (true, "تم حذف المنتج بنجاح");
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            Console.WriteLine($"Error deleting product: {ex.Message}");
+            return (false, $"حدث خطأ أثناء حذف المنتج: {ex.Message}");
+        }
+    }
+    private async Task<string> SaveImageFile(IFormFile file, string folder, IWebHostEnvironment env, IConfiguration config)
+    {
+        var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+        var uploadPath = Path.Combine(env.WebRootPath, "images", folder);
+
+        if (!Directory.Exists(uploadPath))
+            Directory.CreateDirectory(uploadPath);
+
+        var filePath = Path.Combine(uploadPath, fileName);
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var baseUrl = config["ImageSettings:BaseUrl"];
+        return $"{baseUrl}/images/{folder}/{fileName}";
+    }
+
 
     public bool DeleteProduct(int id)
     {
@@ -839,6 +1242,10 @@ public class ProductRepository(WallShopContext ctx)
         }
     }
 
+   
+    
+    
+    
     public async Task<List<ImageFileResult>> GetImagesByProductIdAsync(int productId, IWebHostEnvironment _env)
     {
        
@@ -884,6 +1291,12 @@ public class ProductRepository(WallShopContext ctx)
         }
 
         return new List<int>();
+    }
+
+    public async Task<int> GetTotalProductsCount()
+    {
+        return await ctx.Products.CountAsync();
+
     }
 }
 

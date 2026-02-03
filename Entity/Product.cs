@@ -53,13 +53,16 @@ public class Product
      public virtual List<ProductType>? Types { get; set; }
      
      public string LanguageCode { get; set; }
-     public virtual  List<Image> Images { get; set; }  
+    //public int ImagesId { get; set; }
+    //[ForeignKey("ImagesId")]
+    public virtual  List<Image> Images { get; set; }  
      
      public virtual List<ProductColor>? Colors { get; set; }
      
      public virtual List<Variant>? Variants { get; set; }
-     
-     public virtual List<ProductTranslation>? Translations { get; set; }
+   // public ProductTranslation Translation { get; set; }
+
+    public virtual List<ProductTranslation>? Translations { get; set; }
      
      public virtual List<Review>? Reviews { get; set; }
       

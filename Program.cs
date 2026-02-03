@@ -55,6 +55,8 @@ builder.Services.AddScoped<ReviewRepository>();
 builder.Services.AddScoped<ProductRepository>();
 builder.Services.AddScoped<DashboardCategoryRepository>();
 builder.Services.AddScoped<DashboardOfferRepository>();
+builder.Services.AddScoped<OrderRepository>();
+builder.Services.AddSignalR();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 ////////////////
@@ -139,5 +141,5 @@ app.UseAuthentication();
 app.UseAuthorization(); 
 
 app.MapControllers();
-
+app.MapHub<ProductViewHub>("/hubs/product-views");
 app.Run();

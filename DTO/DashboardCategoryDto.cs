@@ -16,8 +16,8 @@ public class DashboardCategoryDto
 
 public class CreateUpdateCategoryDto
 {
-    public string NameAR { get; set; }
-    public string NameEN { get; set; }
+    public string? NameAR { get; set; }
+    public string? NameEN { get; set; }
     
     //public string CategoryValue { get; set; }
     

@@ -97,7 +97,10 @@ public class DashboardCategoryRepository
 
     public async Task<(bool Success, string? Message)> UpdateCategory(int id, CreateUpdateCategoryDto dto)
     {
-        var CategoryValue = dto.NameEN.Replace(" ", "-").ToLower();
+        var CategoryValue=string.Empty;
+        if (dto.NameEN is not null)
+         CategoryValue = dto.NameEN.Replace(" ", "-").ToLower();
+      
         try
         {
             var category = await _ctx.CategoryImages.FindAsync(id);
@@ -110,12 +113,12 @@ public class DashboardCategoryRepository
             if (exists)
                 return (false, "القيمة (CategoryValue) موجودة مسبقاً");
 
-            category.Category = dto.NameAR.Replace(" ","-");
-            category.CategoryValue = dto.NameEN.Replace(" ","-");
+            category.Category = dto.NameAR is not null ? dto.NameAR.Replace(" ", "-") : category.Category;
+            category.CategoryValue = dto.NameEN is not null ? dto.NameEN.Replace(" ", "-") : category.CategoryValue;
 
             if (dto.ImageFile != null)
             {
-                if (!string.IsNullOrEmpty(category.Image) && !category.Image.StartsWith("http"))
+                if (!string.IsNullOrEmpty(category.Image) )//&& !category.Image.StartsWith("http"))
                 {
                     DeleteImageFile(category.Image);
                 }
@@ -125,7 +128,7 @@ public class DashboardCategoryRepository
             }
             else if (!string.IsNullOrEmpty(dto.ImageUrlLink))
             {
-                if (!string.IsNullOrEmpty(category.Image) && !category.Image.StartsWith("http"))
+                if (!string.IsNullOrEmpty(category.Image))// && !category.Image.StartsWith("http"))
                 {
                     DeleteImageFile(category.Image);
                 }
@@ -158,7 +161,7 @@ public class DashboardCategoryRepository
             if (hasProducts)
                 return (false, "لا يمكن حذف القسم لأنه يحتوي على منتجات");
 
-            if (!string.IsNullOrEmpty(category.Image) && !category.Image.StartsWith("http"))
+            if (!string.IsNullOrEmpty(category.Image))// && !category.Image.StartsWith("http"))
             {
                 DeleteImageFile(category.Image);
             }
@@ -210,6 +213,11 @@ public class DashboardCategoryRepository
         catch
         {
          }
+    }
+
+    internal async Task<int> GetTotalCategoriesCount()
+    {
+        return await _ctx.CategoryImages.CountAsync();
     }
 
     #endregion

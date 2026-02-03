@@ -13,7 +13,8 @@ public class ProductOverviewDto
     public decimal TotalPeopleRating { get; set; }
     
     public decimal AverageRatingPeople { get; set; }
-    
+    public string CategoryAr { get; set; }
+    public string CategoryValue { get; set; }
     public string ImageUrl { get; set; }
     
     public bool IsInWishList { get; set; }

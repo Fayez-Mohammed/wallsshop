@@ -227,5 +227,16 @@ public class DashboardOfferRepository
         }
     }
 
+    internal async Task<int> GetTotalOffersCount()
+    {
+        
+        return await _ctx.Offers.CountAsync();
+    }
+
+    public async Task<List<Offer>> GetAllOffersAsync()
+    {
+      return  await _ctx.Offers.ToListAsync();
+    }
+
     #endregion
 }
