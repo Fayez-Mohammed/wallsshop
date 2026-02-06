@@ -57,7 +57,7 @@ public class Product
     //[ForeignKey("ImagesId")]
     public virtual  List<Image> Images { get; set; }  
      
-     public virtual List<ProductColor>? Colors { get; set; }
+     public virtual List<ProductColor>? Colors2 { get; set; }
      
      public virtual List<Variant>? Variants { get; set; }
    // public ProductTranslation Translation { get; set; }
@@ -65,9 +65,10 @@ public class Product
     public virtual List<ProductTranslation>? Translations { get; set; }
      
      public virtual List<Review>? Reviews { get; set; }
-      
+    public ICollection<NewProductColor> NewProductColors { get; set; } = new List<NewProductColor>();
+
+
 }
 
 
 
- 

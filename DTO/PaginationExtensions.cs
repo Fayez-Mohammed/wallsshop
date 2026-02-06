@@ -31,4 +31,24 @@ public static class PaginationExtensions
             CategoryName = categoryName
         };
     }
+    //public static async Task<PagedResult<T>> ToARENListAsync<T>(
+    //    this IQueryable<T> source,
+     
+    //    string categoryName = "All Categories")
+    //{
+       
+
+    //    var totalCount = await source.CountAsync();
+
+
+    //    var items = await source
+    //        .ToListAsync();
+
+    //    return new PagedResult<T>
+    //    {
+    //        Data = items,
+         
+    //        CategoryName = categoryName
+    //    };
+    //}
 }

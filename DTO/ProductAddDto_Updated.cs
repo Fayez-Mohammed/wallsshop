@@ -19,11 +19,9 @@ public class ProductUpdateDto
     public List<string>? ColorsAR { get; set; }
     public List<string>? ColorsEN { get; set; }
 
-    // الصور الجديدة
     public List<IFormFile>? NewImageFiles { get; set; }
     public List<string>? NewImageUrls { get; set; }
 
-    // IDs الصور المراد حذفها
     public List<int>? DeleteImageIds { get; set; }
 }
 public class ProductAddDtoaren

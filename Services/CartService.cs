@@ -17,8 +17,70 @@ public class CartService
     public CartService(IServiceProvider serviceProvider)//, IDistributedCache cache
     {
         _serviceProvider = serviceProvider;
-    //    _cache = cache;
+        //    _cache = cache;
     }
+
+    //public async Task AddToCart(string userId, CartItem item)
+    //{
+    //    try
+    //    {
+    //        using var scope = _serviceProvider.CreateScope();
+    //        var context = scope.ServiceProvider.GetRequiredService<WallShopContext>();
+
+    //        var product = await context.Products
+    //            .Include(p => p.Variants)
+    //            .Include(p => p.Images)
+    //            .FirstOrDefaultAsync(p => p.Id == item.ProductId);
+
+    //        if (product == null)
+    //            throw new Exception("Product does not exist");
+
+    //        // Try to find variant (optional)
+    //        var variant = product.Variants?
+    //            .FirstOrDefault(v => v.Id == item.VariantId);
+
+    //        // If VariantId is provided but not found → error
+    //        if (item.VariantId != 0 && variant == null)
+    //            throw new Exception("Variant does not exist for this product");
+
+    //        // Fill cart item safely
+    //        item.ProductName = product.Name;
+    //        item.ImageUrl = product.Images?.FirstOrDefault()?.RelativePath ?? string.Empty;
+
+    //        item.UnitPrice = variant?.Price > 0
+    //            ? variant.Price
+    //            : product.Price;
+
+    //        item.Size = variant?.Size ?? string.Empty;
+    //        item.Type = variant?.Type ?? string.Empty;
+    //        item.Color = item.Color ?? string.Empty;
+
+
+    //        // Add to cached cart
+    //        var cachedCart = _carts.GetOrAdd(userId, _ => new CachedCart());
+
+    //        var existingItem = cachedCart.Cart.Items
+    //            .FirstOrDefault(i =>
+    //                i.ProductId == item.ProductId &&
+    //                i.VariantId == item.VariantId &&
+    //                i.Color == item.Color);
+
+    //        if (existingItem != null)
+    //        {
+    //            existingItem.Quantity += item.Quantity;
+    //        }
+    //        else
+    //        {
+    //            cachedCart.Cart.Items.Add(item);
+    //        }
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        throw new Exception($"Error adding to cart: {ex.Message}", ex);
+    //    }
+    //}
+
+
     public async Task AddToCart(string userId, CartItem item)
     {
         try
@@ -29,6 +91,8 @@ public class CartService
             var product = await context.Products
                 .Include(p => p.Variants)
                 .Include(p => p.Images)
+                .Include(p => p.NewProductColors)
+                .ThenInclude(p=>p.Color)
                 .FirstOrDefaultAsync(p => p.Id == item.ProductId);
 
             if (product == null)
@@ -36,7 +100,7 @@ public class CartService
 
             // Try to find variant (optional)
             var variant = product.Variants?
-                .FirstOrDefault(v => v.Id == item.VariantId);
+                .FirstOrDefault(v => v.Id == item.VariantId);        
 
             // If VariantId is provided but not found → error
             if (item.VariantId != 0 && variant == null)
@@ -52,17 +116,84 @@ public class CartService
 
             item.Size = variant?.Size ?? string.Empty;
             item.Type = variant?.Type ?? string.Empty;
-            item.Color = item.Color ?? string.Empty;
+            //// //   item.Color = item.Color ?? string.Empty;
+            //// var colorEntries = product.NewProductColors?.Select(c=>new { c.Color.ColorName,c.Color.EnglishColor }).ToList();
+            //// if (colorEntries == null || colorEntries.Count == 0)
+            //// {
+            ////     item.Color = item.Color ?? string.Empty;
+            ////     item.EnglishColor = item.EnglishColor ?? string.Empty;
+            //// }
+            //// var colorEntry = colorEntries.FirstOrDefault(c => (c.ColorName.Equals(item.Color, StringComparison.OrdinalIgnoreCase) || 
+            //// c.EnglishColor.Equals(item.EnglishColor, StringComparison.OrdinalIgnoreCase)));
+            //// if(colorEntry != null)
+            //// {
+            ////     item.Color = colorEntry.ColorName ?? string.Empty;
+            ////     item.EnglishColor = colorEntry.EnglishColor ?? string.Empty;
+            //// }
+            //// else
+            //// {
+            ////     item.Color = item.Color ?? string.Empty;
+            ////     item.EnglishColor = item.EnglishColor ?? string.Empty;
+            //// }
+            ////// item.Color = item.Color ?? string.Empty;
+            ////// item.EnglishColor = item.EnglishColor ?? string.Empty;
 
-            // Add to cached cart
+            //// // Add to cached cart
+            //// var cachedCart = _carts.GetOrAdd(userId, _ => new CachedCart());
+
+            //// var existingItem = cachedCart.Cart.Items
+            ////     .FirstOrDefault(i =>
+            ////         i.ProductId == item.ProductId &&
+            ////         i.VariantId == item.VariantId &&
+            ////         (i.Color == item.Color || i.EnglishColor == item.EnglishColor));
+            // معالجة الألوان من Database
+            if (product.NewProductColors != null && product.NewProductColors.Any())
+            {
+                // البحث عن اللون المطابق
+                var matchingColor = product.NewProductColors
+                    .FirstOrDefault(npc =>
+                        npc.Color != null &&
+                        (
+                            (!string.IsNullOrEmpty(item.Color) &&
+                             npc.Color.ColorName.Equals(item.Color, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(item.Color) &&
+                             npc.Color.EnglishColor.Equals(item.Color, StringComparison.OrdinalIgnoreCase))
+                        )
+                    );
+
+                if (matchingColor?.Color != null)
+                {
+                    // استخدم الألوان من Database (موحدة)  
+                    item.Color = matchingColor.Color.ColorName;
+                    item.EnglishColor = matchingColor.Color.EnglishColor;
+                }
+                else
+                {
+                    // اللون غير موجود في Database
+                    item.Color = item.Color ?? string.Empty;
+                    item.EnglishColor = item.EnglishColor ?? string.Empty;
+                }
+            }
+            else
+            {
+                // لا توجد ألوان في Database
+                item.Color = item.Color ?? string.Empty;
+                item.EnglishColor = item.EnglishColor ?? string.Empty;
+            }
+
+            // البحث في Cart
             var cachedCart = _carts.GetOrAdd(userId, _ => new CachedCart());
 
             var existingItem = cachedCart.Cart.Items
                 .FirstOrDefault(i =>
                     i.ProductId == item.ProductId &&
                     i.VariantId == item.VariantId &&
-                    i.Color == item.Color);
-
+                      (i.Color == item.Color || i.EnglishColor == item.EnglishColor));
+            //(
+            //    // مقارنة بالعربي أو الإنجليزي
+            //    (i.Color == item.Color && !string.IsNullOrEmpty(item.Color)) ||
+            //    (i.EnglishColor == item.EnglishColor && !string.IsNullOrEmpty(item.EnglishColor))
+            //));
             if (existingItem != null)
             {
                 existingItem.Quantity += item.Quantity;
@@ -87,7 +218,86 @@ public class CartService
 
     //    return new List<CartItem>();
     //}
-    public async Task<List<CartItem>> GetCartItems(string userId, string languageCode="ar")
+
+    //public async Task AddToCart(string userId, CartItem item)
+    //{
+    //    try
+    //    {
+    //        using var scope = _serviceProvider.CreateScope();
+    //        var context = scope.ServiceProvider.GetRequiredService<WallShopContext>();
+
+    //        var product = await context.Products
+    //            .Include(p => p.Variants)
+    //            .Include(p => p.Images)
+    //            .FirstOrDefaultAsync(p => p.Id == item.ProductId);
+
+    //        if (product == null)
+    //            throw new Exception("Product does not exist");
+
+    //        var variant = product.Variants?
+    //            .FirstOrDefault(v => v.Id == item.VariantId);
+
+    //        if (item.VariantId != 0 && variant == null)
+    //            throw new Exception("Variant does not exist for this product");
+
+    //        item.ProductName = product.Name;
+    //        item.ImageUrl = product.Images?.FirstOrDefault()?.RelativePath ?? string.Empty;
+    //        item.UnitPrice = variant?.Price > 0 ? variant.Price : product.Price;
+    //        item.Size = variant?.Size ?? string.Empty;
+    //        item.Type = variant?.Type ?? string.Empty;
+    //        var itemColor = item.Color ?? string.Empty;
+    //        // Normalize اللون
+    //        item.Color = NormalizeColor(item.Color ?? string.Empty);
+
+    //        var cachedCart = _carts.GetOrAdd(userId, _ => new CachedCart());
+
+    //        var existingItem = cachedCart.Cart.Items
+    //            .FirstOrDefault(i =>
+    //                i.ProductId == item.ProductId &&
+    //                i.VariantId == item.VariantId &&
+    //                NormalizeColor(i.Color ?? string.Empty) == NormalizeColor(item.Color ?? string.Empty));
+
+    //        if (existingItem != null)
+    //        {
+    //            existingItem.Quantity += item.Quantity;
+    //            existingItem.Color = itemColor; // تحديث اللون إذا لزم الأمر
+    //        }
+    //        else
+    //        {
+    //            item.Color = itemColor; // تأكد من تعيين اللون قبل الإضافة
+    //            cachedCart.Cart.Items.Add(item);
+    //        }
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        throw new Exception($"Error adding to cart: {ex.Message}", ex);
+    //    }
+    //}
+
+    //private string NormalizeColor(string color)
+    //{
+    //    if (string.IsNullOrWhiteSpace(color))
+    //        return "";
+
+    //    var normalized = color.Trim().ToLower();
+
+    //    // Map common colors
+    //    var colorMap = new Dictionary<string, string>
+    //{
+    //    { "white", "white" },
+    //    { "ابيض", "white" },
+    //    { "أبيض", "white" },
+    //    { "beige", "beige" },
+    //    { "بيج", "beige" },
+    //    { "بيچ", "beige" },
+    //    { "black", "black" },
+    //    { "اسود", "black" },
+    //    { "أسود", "black" }
+    //};
+
+    //    return colorMap.ContainsKey(normalized) ? colorMap[normalized] : normalized;
+    //}
+    public async Task<List<CartItem>> GetCartItems(string userId, string languageCode="en")
     {
         if (_carts.TryGetValue(userId, out var cached))
         {
@@ -123,6 +333,7 @@ public class CartService
                             VariantId = item.VariantId,
                             Quantity = item.Quantity,
                             Color = item.Color,
+                            EnglishColor = item.EnglishColor,
                             Size = a.Variants.FirstOrDefault(b => b.Id == item.VariantId).Size ?? "",
                             Type = a.Variants.FirstOrDefault(b => b.Id == item.VariantId).Type ?? "",
                             UnitPrice = item.VariantId > 0
@@ -146,7 +357,7 @@ public class CartService
                 {
                     var product = context.ProductTranslations.Include(t => t.Product).ThenInclude(p => p.Variants)
 
-                        .Where(t => t.ProductId == item.ProductId)
+                        .Where(t => t.Id == item.ProductId)
                         .Select(t => new CartItem()
                         {
                             ProductId = item.ProductId,
@@ -166,6 +377,7 @@ public class CartService
                                     .FirstOrDefault() ?? "",
 
                             Color = item.Color,
+                            EnglishColor = item.Color,
                             Quantity = item.Quantity,
                             UnitPrice = item.VariantId > 0
                             ? (t.Product.Variants.FirstOrDefault(v => v.Id == item.VariantId).Price)
@@ -247,7 +459,7 @@ public class CartService
             var itemToUpdate = cachedCart.Cart.Items
                 .FirstOrDefault(i => i.ProductId == productId &&
                                      i.VariantId == variantId &&
-                                     i.Color == (color ?? ""));
+                                     (i.Color == (color ?? "") || i.EnglishColor == (color ?? "")));
 
             if (itemToUpdate != null)
             {
@@ -274,8 +486,8 @@ public class CartService
         {
             var itemToDelete = cachedCart.Cart.Items
                 .FirstOrDefault(i => i.ProductId == productId &&
-                                     i.VariantId == variantId &&
-                                     i.Color == (color ?? ""));
+                                     i.VariantId == variantId && (i.Color == (color ?? "") || i.EnglishColor == (color ?? "")));
+            //i.Color == (color ?? ""));
 
             if (itemToDelete != null)
             {

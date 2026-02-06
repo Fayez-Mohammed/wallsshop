@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection.Emit;
 using WallsShop.Entity;
 using WallsShop.Properties.Entity;
 
@@ -34,10 +35,31 @@ public class WallShopContext : IdentityDbContext<User>
     public DbSet<ProductTranslation> ProductTranslations { get; set; }
     
     public DbSet<CategoryImage> CategoryImages { get; set; }
-protected override void OnModelCreating(ModelBuilder mb)
+    public DbSet<NewProductColor> NewProductColors { get; set; }
+    public DbSet<Color> ColorEntities { get; set; }
+    protected override void OnModelCreating(ModelBuilder mb)
 {
     base.OnModelCreating(mb);
-    mb.Entity<Wishlist>()
+
+        mb.Entity<NewProductColor>()
+    .HasKey(pc => new { pc.ProductId, pc.ColorId });
+
+        mb.Entity<NewProductColor>()
+            .HasOne(pc => pc.Product)
+            .WithMany(p => p.NewProductColors)
+            .HasForeignKey(pc => pc.ProductId);
+
+        mb.Entity<NewProductColor>()
+            .HasOne(pc => pc.Color)
+            .WithMany(c => c.NewProductColors)
+            .HasForeignKey(pc => pc.ColorId);
+
+
+
+
+
+
+        mb.Entity<Wishlist>()
         .Property(w => w.Id)
         .ValueGeneratedOnAdd();
 

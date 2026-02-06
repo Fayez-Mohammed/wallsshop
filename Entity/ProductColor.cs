@@ -13,7 +13,8 @@ public class ProductColor
     public int ProductId { get; set; }
     
     public string Color { get; set; }
-    
+    public string EnglishColor { get; set; } = string.Empty;
+
     public string LanguageCode { get; set; }
     
     public virtual Product Product { get; set; }

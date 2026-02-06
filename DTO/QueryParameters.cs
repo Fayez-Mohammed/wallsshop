@@ -10,7 +10,7 @@ public class QueryParameters
     
     public int id { get; set; }
     
-    public string LanguageCode { get; set; } 
-    
+    public string LanguageCode { get; set; } = "en";
+
     public List<int> Ids { get; set; } = new List<int>(); // whishlist 
 }

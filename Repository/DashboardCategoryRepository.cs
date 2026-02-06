@@ -62,7 +62,7 @@ public class DashboardCategoryRepository
                 .AnyAsync(c => c.CategoryValue.ToLower() == CategoryValue);
 
             if (exists)
-                return (false, "القيمة (CategoryValue) موجودة مسبقاً", null);
+                return (false, $"القيمة ({dto.NameAR}, {dto.NameEN}), موجودة مسبقاً", null);
 
             var category = new CategoryImage
             {
@@ -95,7 +95,7 @@ public class DashboardCategoryRepository
         }
     }
 
-    public async Task<(bool Success, string? Message)> UpdateCategory(int id, CreateUpdateCategoryDto dto)
+    public async Task<(bool Success, string? Message, int? CategoryId)> UpdateCategory(int id, CreateUpdateCategoryDto dto)
     {
         var CategoryValue=string.Empty;
         if (dto.NameEN is not null)
@@ -105,13 +105,13 @@ public class DashboardCategoryRepository
         {
             var category = await _ctx.CategoryImages.FindAsync(id);
             if (category == null)
-                return (false, "القسم غير موجود");
+                return (false, "القسم غير موجود",0);
 
             var exists = await _ctx.CategoryImages
                 .AnyAsync(c => c.CategoryValue.ToLower() == CategoryValue && c.Id != id);
 
             if (exists)
-                return (false, "القيمة (CategoryValue) موجودة مسبقاً");
+                return (false, $"القيمة ({CategoryValue}) موجودة مسبقاً",0);
 
             category.Category = dto.NameAR is not null ? dto.NameAR.Replace(" ", "-") : category.Category;
             category.CategoryValue = dto.NameEN is not null ? dto.NameEN.Replace(" ", "-") : category.CategoryValue;
@@ -139,11 +139,11 @@ public class DashboardCategoryRepository
             _ctx.CategoryImages.Update(category);
             await _ctx.SaveChangesAsync();
 
-            return (true, "تم تحديث القسم بنجاح");
+            return (true, "تم تحديث القسم بنجاح", category.Id);
         }
         catch (Exception ex)
         {
-            return (false, $"خطأ في تحديث القسم: {ex.Message}");
+            return (false, $"خطأ في تحديث القسم: {ex.Message}", 0);
         }
     }
 
