@@ -37,3 +37,46 @@ public class ProductTranslationDto
    // public List<ProductVariantDto> Variants { get; set; }
 
 }
+public class ProductENARDto
+{
+    public int Id { get; set; }
+
+    // public int ProductId { get; set; }
+    public string EnglishName { get; internal set; }
+    public string? ArabicName { get; internal set; }
+    public string ArabicDescription { get; internal set; }
+    public string ArabicShourtDescription { get; internal set; }
+    public string ShortDescription { get; set; }
+
+
+    public List<string> Descriptions { get; set; }
+    public List<string> ArabicColors { get; internal set; }
+    public List<string> Colors { get; set; }
+
+    public string Category { get; set; }
+    public string ArabicCategory { get;  set; }
+
+    public string CateogryValue { get; set; }
+
+    public string SKU { get; set; }
+    
+    public decimal AverageRate { get; set; }
+    
+    //public string Name { get; set; }
+    
+    public decimal Price { get; set; }
+    
+    public decimal PriceAfterDiscount { get; set; }
+    
+   
+    public List<ProductVariantENARDto> Variants { get; set; }
+    
+    public List<ProductImageDto> Images { get; set; }
+    
+    
+    public bool IsInWishList { get; set; }
+   // public int PageNumber { get; internal set; }
+
+    // public List<ProductVariantDto> Variants { get; set; }
+
+}

@@ -8,7 +8,7 @@ namespace WallsShop.Controllers.Dashboard;
 
 [ApiController]
 [Route("api/dashboard/[controller]")]
-[Authorize(Roles = "Admin")]
+//[Authorize(Roles = "Admin")]
 public class DashboardCategoriesController : ControllerBase
 {
     private readonly DashboardCategoryRepository _repository;
@@ -35,9 +35,9 @@ public class DashboardCategoriesController : ControllerBase
             _logger.LogError(ex, "Error fetching all categories");
             return StatusCode(500, new { success = false, message = "حدث خطأ أثناء جلب الأقسام" });
         }
-    }
-
-
+    }   
+       
+       
     [HttpGet("GetCategoryById")]
     public async Task<IActionResult> GetCategoryById([FromQuery] int id)
     {
@@ -71,12 +71,14 @@ public class DashboardCategoriesController : ControllerBase
             if (!success)
                 return BadRequest(new { success = false, message });
 
-            return CreatedAtAction(
-                nameof(GetCategoryById),
-                new { id = categoryId },
-                new { success = true, message, categoryId }
-            );
-        }
+            return await GetCategoryById(categoryId ?? 0);
+            //return CreatedAtAction(
+            //    nameof(GetCategoryById),
+            //    new { id = categoryId },
+            //    new { success = true, message, categoryId }
+            //);
+        }               
+                          
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating category");
@@ -93,12 +95,13 @@ public class DashboardCategoriesController : ControllerBase
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, message = "بيانات غير صحيحة", errors = ModelState });
 
-            var (success, message) = await _repository.UpdateCategory(id, dto);
+            var (success, message, categoryId) = await _repository.UpdateCategory(id, dto);
 
             if (!success)
                 return BadRequest(new { success = false, message });
 
-            return Ok(new { success = true, message });
+            return await GetCategoryById(categoryId ?? 0);
+
         }
         catch (Exception ex)
         {

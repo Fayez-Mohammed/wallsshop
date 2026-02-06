@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WallsShop.Context;
 
@@ -11,9 +12,11 @@ using WallsShop.Context;
 namespace WallsShop.Migrations
 {
     [DbContext(typeof(WallShopContext))]
-    partial class WallShopContextModelSnapshot : ModelSnapshot
+    [Migration("20260204151422_colorsManyTomany2")]
+    partial class colorsManyTomany2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -617,17 +620,11 @@ namespace WallsShop.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
                     b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsBlocked")
                         .HasColumnType("bit");
 
                     b.Property<bool>("LockoutEnabled")
@@ -932,7 +929,7 @@ namespace WallsShop.Migrations
             modelBuilder.Entity("WallsShop.Entity.ProductColor", b =>
                 {
                     b.HasOne("WallsShop.Properties.Entity.Product", "Product")
-                        .WithMany("Colors2")
+                        .WithMany("Colors")
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1009,15 +1006,13 @@ namespace WallsShop.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WallsShop.Entity.User", "User")
+                    b.HasOne("WallsShop.Entity.User", null)
                         .WithMany("Wishlist")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Product");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WallsShop.Properties.Entity.Product", b =>
@@ -1046,7 +1041,7 @@ namespace WallsShop.Migrations
 
             modelBuilder.Entity("WallsShop.Properties.Entity.Product", b =>
                 {
-                    b.Navigation("Colors2");
+                    b.Navigation("Colors");
 
                     b.Navigation("Images");
 

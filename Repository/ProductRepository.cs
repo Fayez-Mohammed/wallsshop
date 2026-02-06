@@ -15,6 +15,7 @@ public class ProductRepository(WallShopContext ctx)
     {
         var query = ctx.Products.AsQueryable();
         query.Include(c => c.CategoryImage);
+        query.Include(c => c.NewProductColors);
         if (queryParameters.search != null)
         {
            
@@ -136,7 +137,8 @@ public class ProductRepository(WallShopContext ctx)
 
             IsInWishList = wishlistIds.Contains(p.Id),
             Images = p.Images.Select(img => new ProductImageDto { Path = img.RelativePath }).ToList(),
-            Colors = p.Colors.Where(a => a.LanguageCode == "ar").Select(c => c.Color).ToList(),
+           // Colors = p.Colors.Where(a => a.LanguageCode == "ar").Select(c => c.Color).ToList(),
+            Colors = p.NewProductColors.Where(c => c.ProductId == p.Id).Select(c => c.Color.ColorName).ToList(),
             Variants = p.Variants.Where(a => a.LanguageCode == "ar")
                 .Select(v => new ProductVariantDto
                 {
@@ -160,6 +162,8 @@ public class ProductRepository(WallShopContext ctx)
 
         var query = ctx
             .ProductTranslations
+            .Include(t => t.Product)
+            .ThenInclude(p=>p.NewProductColors)
             .Include(t => t.Product)
             .ThenInclude(p => p.Variants)
             .Include(t => t.Product)
@@ -261,10 +265,155 @@ public class ProductRepository(WallShopContext ctx)
             {
                 Path = img.RelativePath
             }).ToList(),
-            Colors = pt.Product.Colors.Where(a => a.LanguageCode == "en").Select(c => c.Color).ToList()
+          //  Colors = pt.Product.Colors.Where(a => a.LanguageCode == "en").Select(c => c.Color).ToList()
+            Colors = pt.Product.NewProductColors.Where(p=>p.ProductId==pt.Id).Select(c => c.Color.EnglishColor).ToList()
         });
 
         return await dtoQuery.ToPagedListAsync(queryParameters.page, queryParameters.pageSize, categoryNameDisplay);
+        //return  await query.Select(pt => new ProductTranslationDto{
+        //        Id = pt.Id,
+        //        ProductId = pt.ProductId,
+        //        Name = pt.Name,
+        //        ShortDescription = pt.Description.Split(new string []
+        //        {
+        //             "\n"
+        //        },StringSplitOptions.RemoveEmptyEntries)[0],
+        //        Descriptions = pt.Description.Split(new[] { "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries).ToList() ,
+        //        Category = pt.Category.Replace("-"," "),
+        //        AverageRate = pt.Product.AverageRate,
+        //        Variants = pt.Product.Variants.Where(a=>a.LanguageCode == "en").ToList(),
+        //        Price = pt.Product.Price,
+        //        PriceAfterDiscount = pt.Product.PriceAfterDiscount,
+        //        SKU = pt.Product.SKU,
+        //    IsInWishList = wishlistIds.Contains(pt.Id),
+        //    Images = pt.Product.Images.Select(img => new ProductImageDto()
+        //        {
+        //            Path = img.RelativePath
+        //        }).ToList(),
+        //        Colors = pt.Product.Colors.Where(a=>a.LanguageCode == "en").Select(c => c.Color).ToList()
+        //    })
+        //    .ToListAsync<ProductTranslationDto>();;
+    }
+    public async Task<List<ProductENARDto>> GetArabicAndEnglishProductById(QueryParameters queryParameters, string? userId = null)
+    {
+
+        var query = ctx
+            .ProductTranslations
+            .Include(t => t.Product)
+            .ThenInclude(p=>p.NewProductColors)
+            .Include(t => t.Product)
+            .ThenInclude(p => p.Variants)
+            .Include(t => t.Product)
+            .ThenInclude(t => t.Images)
+            .Include(t => t.Product).ThenInclude(c => c.CategoryImage)
+            .AsQueryable();
+        if (queryParameters.search != null)
+        {
+            
+                var translatedProductIds = await ctx.ProductTranslations
+                    .Where(t => t.Name.Contains(queryParameters.search) || t.Description.Contains(queryParameters.search))
+                    .Select(t => t.ProductId)
+                    .ToListAsync();
+                query = query.Where(a => translatedProductIds.Contains(a.Id));
+            
+
+        }
+        string categoryNameDisplay = "All Categories";
+        //if (!string.IsNullOrEmpty(queryParameters.category))
+        //{
+        //    var cat = queryParameters.category.ToLower();
+        //    query = query.Where(a => a.Category.ToLower() == cat);
+        //    categoryNameDisplay = queryParameters.category;
+        //}
+        if (!string.IsNullOrEmpty(queryParameters.category))
+        {
+            var cat = queryParameters.category.ToLower();
+            query = query.Where(a => a.Product.CategoryImage.Category.ToLower() == cat);
+            var category = await ctx.CategoryImages.FirstOrDefaultAsync(c => c.CategoryValue.ToLower() == cat);
+            if (category != null)
+            {
+                categoryNameDisplay = queryParameters.LanguageCode == "en" ? category.CategoryValue.Replace("-", " ") : category.Category.Replace("-", " ");
+
+            }
+            else
+            {
+                categoryNameDisplay = queryParameters.category;
+            }
+        }
+        //int currentPage = queryParameters.page > 0 ? queryParameters.page : 1;
+        var wishlistIds = await GetWishlistIdsAsync(userId, queryParameters.Ids);
+
+        if (queryParameters.id > 0)
+        {
+            query = query.Where(a => a.Id ==queryParameters.id);
+        }
+
+        //if (!string.IsNullOrEmpty(queryParameters.category))
+        //{
+        //    query = query.Where(a => a.Category.ToLower() == queryParameters.category.ToLower());
+        //}
+        
+        //if (queryParameters.page > 0 && queryParameters.pageSize > 0)
+        //{
+        //    var skip = (queryParameters.page - 1) * queryParameters.pageSize;
+        //    query = query.Skip(skip).Take(queryParameters.pageSize);
+        //}
+         
+        
+        query = queryParameters.order.ToLower() switch
+        {
+            "price_asc" => query.OrderBy(a => a.Price),
+            "price_desc" => query.OrderByDescending(a => a.Price),
+            "rating_desc" => query.OrderByDescending(a => a.AverageRate),
+            "rating_asc" => query.OrderBy(a => a.AverageRate),
+			"latest_asc" => query.OrderBy(a => a.Product.Created),
+			"latest_desc" => query.OrderByDescending(a => a.Product.Created),
+			_ => query
+        };
+        var dtoQuery = query.Select(pt => new ProductENARDto
+        {
+            Id = pt.Id,
+           // ProductId = pt.ProductId,
+            EnglishName = pt.Name,
+            ArabicName=pt.Product.Name,
+            ArabicDescription=pt.Product.Descriptions,
+            ArabicShourtDescription=pt.Product.FullDescription,
+            ShortDescription = pt.Description.Split(new string[] { "\n" }, StringSplitOptions.RemoveEmptyEntries)[0],
+            Descriptions = pt.Description.Split(new[] { "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            Category = pt.Product.CategoryImage.CategoryValue.Replace("-", " "),
+            ArabicCategory=pt.Product.CategoryImage.Category.Replace("-", " "),
+            CateogryValue = pt.Product.CategoryImage.CategoryValue,
+            AverageRate = pt.Product.AverageRate,
+
+            //PageNumber = currentPage,
+
+            //Variants = pt.Product.Variants.Where(a => a.LanguageCode == "ar").ToList(),
+            Variants = pt.Product.Variants.Where(a => a.LanguageCode == "ar")
+                .Select(v => new ProductVariantENARDto
+                {
+                    Id = v.Id,
+                    ArabicType=v.Type,
+                    ArabicSize=v.Size,
+                    Type = v.EnglishType,
+                    Size = v.EnglishSize,
+                    Price = v.Price,
+                    PriceBeforeDiscount = v.PriceBeforeDiscount ?? 0
+                }).ToList(),
+       
+        Price = pt.Product.Price,
+            PriceAfterDiscount = pt.Product.PriceAfterDiscount,
+            SKU = pt.Product.SKU,
+            IsInWishList = wishlistIds.Contains(pt.Id), 
+            Images = pt.Product.Images.Select(img => new ProductImageDto()
+            {
+                Path = img.RelativePath
+            }).ToList(),
+          //  Colors = pt.Product.Colors.Where(a => a.LanguageCode == "en").Select(c => c.Color).ToList()
+            Colors = pt.Product.NewProductColors.Where(p=>p.ProductId==pt.Id).Select(c => c.Color.EnglishColor).ToList(),
+            ArabicColors=pt.Product.NewProductColors.Where(p=>p.ProductId==pt.Id).Select(c => c.Color.ColorName).ToList()
+        }).ToList();
+        return  dtoQuery;
+      //  return await dtoQuery.ToARENListAsync( categoryNameDisplay);
         //return  await query.Select(pt => new ProductTranslationDto{
         //        Id = pt.Id,
         //        ProductId = pt.ProductId,
@@ -571,12 +720,15 @@ public class ProductRepository(WallShopContext ctx)
         return await ctx?.Products
             .OrderByDescending(a => a.AverageRate)
             .Include(a=>a.Variants)
+            .Include(a=>a.CategoryImage)
             .Include(a => a.Images)
             .Take(4)
             .Select(p => new ProductOverviewDto
             {
                 Id = p.Id,
                 Name = p.Name,
+                CategoryAr = p.CategoryImage.Category.Replace("-", " "),
+                CategoryValue= p.CategoryImage.CategoryValue,
                 Price = p.Price,
                 PriceAfterDiscount = p.PriceAfterDiscount,
                 ImageUrl = p.Images.FirstOrDefault().RelativePath,
@@ -721,7 +873,8 @@ public class ProductRepository(WallShopContext ctx)
                 Name = pt.Name,
                 Price = pt.Product.Price,
                 ImageUrl = pt.Product.Images.FirstOrDefault().RelativePath,
-
+                CategoryValue = pt.Product.CategoryImage.CategoryValue,
+                CategoryEn=pt.Product.CategoryImage.CategoryValue.Replace("-", " "),
                 PriceAfterDiscount = pt.Product.PriceAfterDiscount,
                 TotalPeopleRating = pt.Product.TotalRatePeople,
                 AverageRatingPeople = pt.Product.AverageRate,
@@ -805,22 +958,29 @@ public class ProductRepository(WallShopContext ctx)
             {
                 for (int i = 0; i < productDto.ColorsAR.Count; i++)
                 {
-                     ctx.Colors.Add(new ProductColor
+                    // ctx.Colors.Add(new ProductColor
+                    //{
+                    //    ProductId = product.Id,
+                    //    Color = productDto.ColorsAR[i],
+                    //    LanguageCode = "ar"
+                    //});
+
+                    // if (productDto.ColorsEN != null && i < productDto.ColorsEN.Count)
+                    //{
+                    //    ctx.Colors.Add(new ProductColor
+                    //    {
+                    //        ProductId = product.Id,
+                    //        Color = productDto.ColorsEN[i],
+                    //        LanguageCode = "en"
+                    //    });
+                    //}
+              await ctx.NewProductColors.AddAsync(new NewProductColor
                     {
                         ProductId = product.Id,
-                        Color = productDto.ColorsAR[i],
-                        LanguageCode = "ar"
+                        ColorId = await GetOrCreateColorId(productDto.ColorsEN[i],productDto.ColorsAR[i]),
                     });
+                 
 
-                     if (productDto.ColorsEN != null && i < productDto.ColorsEN.Count)
-                    {
-                        ctx.Colors.Add(new ProductColor
-                        {
-                            ProductId = product.Id,
-                            Color = productDto.ColorsEN[i],
-                            LanguageCode = "en"
-                        });
-                    }
                 }
             }
 
@@ -924,7 +1084,27 @@ public class ProductRepository(WallShopContext ctx)
             return false;
         }
     }
- 
+
+    private async Task<int> GetOrCreateColorId(string englishColor,string colorName)
+    {
+        var color = await ctx.ColorEntities.FirstOrDefaultAsync(c =>( c.EnglishColor.ToLower() == englishColor.ToLower()|| c.ColorName.ToLower() == colorName.ToLower()));
+        if (color != null)
+        {
+            return color.Id;
+        }
+        else
+        {
+            var newColor = new Color
+            {
+                EnglishColor = englishColor,
+                ColorName = colorName
+            };
+            ctx.ColorEntities.Add(newColor);
+            await ctx.SaveChangesAsync();
+            return newColor.Id;
+        }
+    }
+
     public async Task<bool> UpdateProduct(int productId, ProductUpdateDto productDto, IWebHostEnvironment env, IConfiguration config)
     {
         using var transaction = await ctx.Database.BeginTransactionAsync();
@@ -932,7 +1112,8 @@ public class ProductRepository(WallShopContext ctx)
         {
              var product = await ctx.Products
                 //.Include(p => p.ProductTranslations)
-                .Include(p => p.Colors)
+               // .Include(p => p.Colors)
+                .Include(p => p.NewProductColors)
                 .Include(p => p.Variants)
                 .Include(p => p.Images)
                 .FirstOrDefaultAsync(p => p.Id == productId);
@@ -986,8 +1167,10 @@ public class ProductRepository(WallShopContext ctx)
 
              if (productDto.ColorsAR != null || productDto.ColorsEN != null)
             {
-                 var oldColors = product.Colors.ToList();
-                ctx.Colors.RemoveRange(oldColors);
+               //  var oldColors = product.Colors.ToList();
+                 var oldColors = product.NewProductColors.Select(c=>c.Color).ToList();
+             //   ctx.Colors.RemoveRange(oldColors);
+                ctx.ColorEntities.RemoveRange(oldColors);
 
                  if (productDto.ColorsAR != null && productDto.ColorsAR.Any())
                 {
@@ -1156,7 +1339,8 @@ public class ProductRepository(WallShopContext ctx)
             var product = await ctx.Products
                 .Include(p => p.Images)
             //    .Include(p => p.ProductTranslations)
-                .Include(p => p.Colors)
+             //   .Include(p => p.Colors)
+                .Include(p => p.NewProductColors)
                 .Include(p => p.Variants)
                 .Include(p => p.Reviews)
                 .FirstOrDefaultAsync(p => p.Id == productId);

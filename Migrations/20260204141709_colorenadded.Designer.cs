@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WallsShop.Context;
 
@@ -11,9 +12,11 @@ using WallsShop.Context;
 namespace WallsShop.Migrations
 {
     [DbContext(typeof(WallShopContext))]
-    partial class WallShopContextModelSnapshot : ModelSnapshot
+    [Migration("20260204141709_colorenadded")]
+    partial class colorenadded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -232,26 +235,6 @@ namespace WallsShop.Migrations
                     b.ToTable("CategoryImages");
                 });
 
-            modelBuilder.Entity("WallsShop.Entity.Color", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ColorName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EnglishColor")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ColorEntities");
-                });
-
             modelBuilder.Entity("WallsShop.Entity.Coupon", b =>
                 {
                     b.Property<int>("Id")
@@ -324,21 +307,6 @@ namespace WallsShop.Migrations
                     b.HasIndex("ProductId");
 
                     b.ToTable("Images");
-                });
-
-            modelBuilder.Entity("WallsShop.Entity.NewProductColor", b =>
-                {
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ColorId")
-                        .HasColumnType("int");
-
-                    b.HasKey("ProductId", "ColorId");
-
-                    b.HasIndex("ColorId");
-
-                    b.ToTable("NewProductColors");
                 });
 
             modelBuilder.Entity("WallsShop.Entity.Offer", b =>
@@ -617,17 +585,11 @@ namespace WallsShop.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
                     b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsBlocked")
                         .HasColumnType("bit");
 
                     b.Property<bool>("LockoutEnabled")
@@ -882,25 +844,6 @@ namespace WallsShop.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("WallsShop.Entity.NewProductColor", b =>
-                {
-                    b.HasOne("WallsShop.Entity.Color", "Color")
-                        .WithMany("NewProductColors")
-                        .HasForeignKey("ColorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("WallsShop.Properties.Entity.Product", "Product")
-                        .WithMany("NewProductColors")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Color");
-
-                    b.Navigation("Product");
-                });
-
             modelBuilder.Entity("WallsShop.Entity.Offer", b =>
                 {
                     b.HasOne("WallsShop.Entity.CategoryImage", "CategoryImage")
@@ -932,7 +875,7 @@ namespace WallsShop.Migrations
             modelBuilder.Entity("WallsShop.Entity.ProductColor", b =>
                 {
                     b.HasOne("WallsShop.Properties.Entity.Product", "Product")
-                        .WithMany("Colors2")
+                        .WithMany("Colors")
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1009,15 +952,13 @@ namespace WallsShop.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WallsShop.Entity.User", "User")
+                    b.HasOne("WallsShop.Entity.User", null)
                         .WithMany("Wishlist")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Product");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WallsShop.Properties.Entity.Product", b =>
@@ -1027,11 +968,6 @@ namespace WallsShop.Migrations
                         .HasForeignKey("CategoryFK");
 
                     b.Navigation("CategoryImage");
-                });
-
-            modelBuilder.Entity("WallsShop.Entity.Color", b =>
-                {
-                    b.Navigation("NewProductColors");
                 });
 
             modelBuilder.Entity("WallsShop.Entity.User", b =>
@@ -1046,11 +982,9 @@ namespace WallsShop.Migrations
 
             modelBuilder.Entity("WallsShop.Properties.Entity.Product", b =>
                 {
-                    b.Navigation("Colors2");
+                    b.Navigation("Colors");
 
                     b.Navigation("Images");
-
-                    b.Navigation("NewProductColors");
 
                     b.Navigation("Prices");
 

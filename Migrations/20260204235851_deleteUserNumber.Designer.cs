@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WallsShop.Context;
 
@@ -11,9 +12,11 @@ using WallsShop.Context;
 namespace WallsShop.Migrations
 {
     [DbContext(typeof(WallShopContext))]
-    partial class WallShopContextModelSnapshot : ModelSnapshot
+    [Migration("20260204235851_deleteUserNumber")]
+    partial class deleteUserNumber
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1009,15 +1012,13 @@ namespace WallsShop.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WallsShop.Entity.User", "User")
+                    b.HasOne("WallsShop.Entity.User", null)
                         .WithMany("Wishlist")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Product");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WallsShop.Properties.Entity.Product", b =>

@@ -115,7 +115,7 @@ public class DashboardOfferRepository
     }
 
 
-    public async Task<(bool Success, string? Message)> UpdateOffer(int id, CreateUpdateOfferDto dto)
+    public async Task<(bool Success, string? Message,int? OfferId)> UpdateOffer(int id, CreateUpdateOfferDto dto)
     {
         try
         {
@@ -123,7 +123,7 @@ public class DashboardOfferRepository
                 .FirstOrDefaultAsync(c => c.CategoryValue == dto.CategoryValue.Replace(" ", "-"));
             var offer = await _ctx.Offers.FindAsync(id);
             if (offer == null)
-                return (false, "العرض غير موجود");
+                return (false, "العرض غير موجود",0);
 
             offer.ArabicName = dto.TitleAR;
             offer.Name = dto.TitleEN;
@@ -157,11 +157,11 @@ public class DashboardOfferRepository
             _ctx.Offers.Update(offer);
             await _ctx.SaveChangesAsync();
 
-            return (true, "تم تحديث العرض بنجاح");
+            return (true, "تم تحديث العرض بنجاح", offer.Id);
         }
         catch (Exception ex)
         {
-            return (false, $"خطأ في تحديث العرض: {ex.Message}");
+            return (false, $"خطأ في تحديث العرض: {ex.Message}", 0);
         }
     }
 

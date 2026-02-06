@@ -6,6 +6,7 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using WallsShop.Context;
 using WallsShop.Entity;
+//using WallsShop.Helpers;
 using WallsShop.Repository;
 using WallsShop.Repository.Dashboard;
 using WallsShop.Services;
@@ -57,6 +58,8 @@ builder.Services.AddScoped<DashboardCategoryRepository>();
 builder.Services.AddScoped<DashboardOfferRepository>();
 builder.Services.AddScoped<OrderRepository>();
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<ProductViewTracker>();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 ////////////////
@@ -64,13 +67,28 @@ builder.Services.AddEndpointsApiExplorer();
 
 //builder.Services.AddScoped<CartService>();
 ////////////////////
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("AllowAll", policy =>
+//    {
+//        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+//    });
+
+//});
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
-    });
+    options.AddPolicy("AllowAngular",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:4200",             // Local Development
+                "https://wallsshop-2.vercel.app")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+
+        });
 });
+
 //////////Swagger\\\\\\\\\\\\\\\\\\\\
 ///
 
@@ -131,13 +149,15 @@ app.UseSwaggerUI(options =>
     app.UseHsts();
 //}
 
-app.UseCors("AllowAll");
-
+//app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 app.UseStaticFiles(); 
 app.UseRouting();
+app.UseCors("AllowAngular");
 
-app.UseAuthentication(); 
+app.UseAuthentication();
+//app.UseMiddleware<BlockedUserMiddleware>();
+
 app.UseAuthorization(); 
 
 app.MapControllers();

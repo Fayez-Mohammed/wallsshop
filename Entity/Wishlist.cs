@@ -12,7 +12,9 @@ public sealed class Wishlist
     [Required]
   
     public   string UserId { get; set; }
-    
+    [ForeignKey("UserId")]
+    public User User { get; set; }
+
     [Required]
     public required int ProductId { get; set; }
     

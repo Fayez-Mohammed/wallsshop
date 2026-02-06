@@ -18,7 +18,7 @@ public class OffersController(
     UserManager<User> userManager
     ) : ControllerBase
 {
-    [Authorize("Admin")]
+    [Authorize(Roles ="Admin")]
 
     [HttpPost("add-offer")]
    public async Task<IActionResult> AddOffer([FromForm] AddOfferDto model)
@@ -159,7 +159,7 @@ public class OffersController(
 
        return Ok(new {reponse = offers});
    }
-    [Authorize("Admin")]
+    [Authorize(Roles = "Admin")]
 
     [HttpDelete("delete-offer")]
     public async Task<IActionResult> DeleteOffer([FromQuery] int offerId)

@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using System.Text;
+using Humanizer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
@@ -64,7 +65,9 @@ public class AccountController : ControllerBase
 
         await _emailService.SendEmailAsync(user.Email, "Confirm your email",
             $"Please confirm your account by <a href='{callbackUrl}'>clicking here</a>.");
-
+      //  var maxUserNumber = await _context.Users.MaxAsync(u => (int?)u.UserNumber) ?? 0;
+    //    user.UserNumber = maxUserNumber + 1;
+        //await _context.SaveChangesAsync();
         return Ok(new {response = "Registration successful. Please check your email to verify your account."});
     }
     
@@ -108,8 +111,12 @@ public class AccountController : ControllerBase
         try
         {
             var user = await _userManager.FindByEmailAsync(loginDto.Email);
+            
             if (user == null) return Unauthorized(new {response = "Invalid credentials"});
- 
+            if (user.IsBlocked)
+            {
+                return Unauthorized(new { response = "Your account has been blocked. Please contact support for assistance." });
+            }
             var passwordValid = await _userManager.CheckPasswordAsync(user, loginDto.Password);
             if (!passwordValid) return Unauthorized( new {response = "Invalid credentials"});
  
@@ -285,4 +292,5 @@ public class AccountController : ControllerBase
 
         return BadRequest(result.Errors);
     }
+  
 }

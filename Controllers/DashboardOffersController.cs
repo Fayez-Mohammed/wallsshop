@@ -73,11 +73,13 @@ public class DashboardOffersController : ControllerBase
             if (!success)
                 return BadRequest(new { success = false, message });
 
-            return CreatedAtAction(
-                nameof(GetOfferById),
-                new { id = offerId },
-                new { success = true, message, offerId }
-            );
+            return await GetOfferById(offerId ?? 0);
+
+            //return CreatedAtAction(
+            //    nameof(GetOfferById),
+            //    new { id = offerId },
+            //    new { success = true, message, offerId }
+           // );
         }
         catch (Exception ex)
         {
@@ -95,12 +97,12 @@ public class DashboardOffersController : ControllerBase
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, message = "بيانات غير صحيحة", errors = ModelState });
 
-            var (success, message) = await _repository.UpdateOffer(id, dto);
+            var (success, message, offerId) = await _repository.UpdateOffer(id, dto);
 
             if (!success)
                 return BadRequest(new { success = false, message });
 
-            return Ok(new { success = true, message });
+            return await GetOfferById(offerId ?? 0);
         }
         catch (Exception ex)
         {

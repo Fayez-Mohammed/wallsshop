@@ -16,7 +16,7 @@ namespace WallsShop.Controllers.Dashboard;
 
 [ApiController]
 [Route("api/dashboard/[controller]")]
-[Authorize(Roles = "Admin")]
+//[Authorize(Roles = "Admin")]
 public class DashBoardController : ControllerBase
 {
     private readonly ILogger<DashBoardController> _logger;
@@ -29,15 +29,16 @@ public class DashBoardController : ControllerBase
     private readonly DashboardOfferRepository _offerRepository;
     private readonly OrderRepository _orderRepository;
     private readonly WishlistRepository _wishlistRepository;
-    private  readonly FormRepository _formRepository;
+    private readonly FormRepository _formRepository;
     private readonly ProductRepository _productRepo;
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _config;
+    private readonly SignInManager<User> _signInManager;
     public DashBoardController(
         DashboardCategoryRepository Categoryrepository,
-        DashboardOfferRepository offerRepository, 
+        DashboardOfferRepository offerRepository,
         ProductRepository products,
-        WallShopContext context, 
+        WallShopContext context,
         CartService cartService,
         WishlistRepository wishlistService,
         UserManager<User> userManager,
@@ -45,6 +46,7 @@ public class DashBoardController : ControllerBase
         WishlistRepository wishlistRepository,
         FormRepository formRepository,
        ProductRepository productRepo,
+       SignInManager<User> signInManager,
 
       IWebHostEnvironment env,
         IConfiguration config,
@@ -62,6 +64,7 @@ public class DashBoardController : ControllerBase
         _productRepo = productRepo;
         _env = env;
         _config = config;
+        _signInManager = signInManager;
     }
     public class DashboardSummaryDto
     {
@@ -104,7 +107,7 @@ public class DashBoardController : ControllerBase
     class ProductsToMangeDto
     {
         public int TotalProducts { get; set; }
-       
+
         public List<DashboardProductDto> Products { get; set; }
     }
 
@@ -113,10 +116,10 @@ public class DashBoardController : ControllerBase
     /// إضافة منتج - كل شيء JSON
     /// </summary>
     [HttpPost("add-product")]
-  //  [Authorize(Roles = "Admin,SystemAdmin")]
+    //  [Authorize(Roles = "Admin,SystemAdmin")]
     public async Task<IActionResult> AddProduct([FromForm] ProductAddDtoaren model)
     {
-       
+
         // model.ImageFiles = ImageFiles;
         if (!ModelState.IsValid)
             return BadRequest(new { response = "بيانات غير صحيحة", errors = ModelState });
@@ -129,7 +132,7 @@ public class DashBoardController : ControllerBase
         return BadRequest(new { response = "فشل في إضافة المنتج" });
     }
     [HttpDelete("delete-product")]
-  //  [Authorize(Roles = "Admin,SystemAdmin")]
+    //  [Authorize(Roles = "Admin,SystemAdmin")]
     public async Task<IActionResult> DeleteProduct([FromQuery] int id)
     {
         if (id <= 0)
@@ -147,19 +150,28 @@ public class DashBoardController : ControllerBase
     {
         try
         {
-            var users = await _userManager.Users.ToListAsync();
-            if(users == null || users.Count == 0)
+            var users = await _userManager.Users
+                .OrderBy(u => u.CreatedAt)
+                .ToListAsync();
+
+            if (users == null || users.Count == 0)
             {
                 return NotFound(new { success = false, message = "لا يوجد عملاء" });
             }
-            var customerDtos = users.Select(user => new CustomerDto
-            {
-                Id = user.Id,
-                UserName = user.Name,
-           
-                Email = user.Email,
-                PhoneNumber = user.PhoneNumber
-            }).ToList();
+
+            var customerDtos = users
+                .Select((user, index) => new CustomerDto
+                {
+                    RowNum = index + 1,
+                    Id = user.Id,
+                    CreatedAt = user.CreatedAt,
+                    UserName = user.Name,
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber,
+                    Status=user.IsBlocked? "Blocked" : "Active"
+                })
+                .ToList();
+
             return Ok(new { success = true, data = customerDtos });
         }
         catch (Exception ex)
@@ -168,12 +180,38 @@ public class DashBoardController : ControllerBase
             return StatusCode(500, new { success = false, message = "حدث خطأ أثناء جلب العملاء" });
         }
     }
+
+    //public async Task<IActionResult> GetAllCustomers()
+    //{
+    //    try
+    //    {
+    //        var users = await _userManager.Users.ToListAsync();
+    //        if(users == null || users.Count == 0)
+    //        {
+    //            return NotFound(new { success = false, message = "لا يوجد عملاء" });
+    //        }
+    //        var customerDtos = users.Select(user => new CustomerDto
+    //        {
+    //            Id = user.Id,
+    //            UserName = user.Name,
+
+    //            Email = user.Email,
+    //            PhoneNumber = user.PhoneNumber
+    //        }).ToList();
+    //        return Ok(new { success = true, data = customerDtos });
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        _logger.LogError(ex, "Error fetching customers");
+    //        return StatusCode(500, new { success = false, message = "حدث خطأ أثناء جلب العملاء" });
+    //    }
+    //}
     [HttpDelete("DeleteCustomer")]
     public async Task<IActionResult> DeleteCustomer([FromQuery] string id)
     {
         if (string.IsNullOrEmpty(id))
             return BadRequest(new { response = "معرف العميل غير صحيح" });
-        var user =  await _userManager.FindByIdAsync(id);
+        var user = await _userManager.FindByIdAsync(id);
         if (user == null)
             return NotFound(new { response = "العميل غير موجود" });
 
@@ -221,5 +259,79 @@ public class DashBoardController : ControllerBase
             return Ok(new { response = "تم تعديل المنتج بنجاح" });
 
         return BadRequest(new { response = "فشل في تعديل المنتج أو المنتج غير موجود" });
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("BlockUser")]
+    public async Task<IActionResult> BlockUser([FromQuery] string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null) return NotFound(new { response = "User not found." });
+        user.IsBlocked = true;
+        await _userManager.UpdateAsync(user);
+        return Ok(new { response = "User has been blocked." });
+    }
+    [Authorize(Roles = "Admin")]
+    [HttpPut("UnBlockUser")]
+    public async Task<IActionResult> UnBlockUser([FromQuery] string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null) return NotFound(new { response = "User not found." });
+        user.IsBlocked = false;
+        await _userManager.UpdateAsync(user);
+        return Ok(new { response = "User has been unblocked." });
+    }
+    [Authorize(Roles = "Admin")]
+    [HttpPut("ToggleBlock")]
+    public async Task<IActionResult> ToggleBlock([FromQuery] string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null) return NotFound(new { response = "User not found." });
+        user.IsBlocked = !user.IsBlocked;
+        await _userManager.UpdateAsync(user);
+        if (user.IsBlocked)
+        {
+            await _userManager.UpdateSecurityStampAsync(user);
+        }
+
+        return Ok(new { response = user.IsBlocked ? "User has been blocked." : "User has been unblocked." });
+    }
+
+    [HttpGet("GetProductForEdit")]
+    public async Task<IActionResult> GetProductForEdit([FromQuery] QueryParameters queryParameters)
+    {
+        string? userId = null;
+        if (User.Identity != null && User.Identity.IsAuthenticated)
+        {
+            userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        }
+        if (queryParameters.id <= 0)
+            return BadRequest(new { response = "معرف المنتج غير صحيح" });
+        var product = await _productRepo.GetArabicAndEnglishProductById(queryParameters, userId);
+        if (product == null)
+            return NotFound(new { response = "المنتج غير موجود" });
+        return Ok(new { success = true, data = product });
+    }
+    [HttpPost("AddAdmin")]
+    public async Task<IActionResult> AddAdmin([FromBody] AdminAddDto model)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new { response = "بيانات غير صحيحة", errors = ModelState });
+        var user = new User
+        {
+            UserName = model.Email,
+            Email = model.Email,
+            Name = model.Name,
+            PhoneNumber = model.PhoneNumber,
+            CreatedAt = DateTime.UtcNow
+        };
+        var result = await _userManager.CreateAsync(user, model.Password);
+        if (result.Succeeded)
+        {
+            await _userManager.AddToRoleAsync(user, "Admin");
+            return Ok(new { response = "تم إضافة المسؤول بنجاح" });
+        }
+        var errorMessage = string.Join("; ", result.Errors.Select(e => e.Description));
+        return BadRequest(new { response = errorMessage });
     }
 }
